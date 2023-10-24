@@ -136,23 +136,23 @@ pub fn lex(src: String) -> Result<Vec<Token>, String> {
 }
 
 
-/// Convert infix tokens to prefix tokens based on the
+/// Convert infix tokens to postfix tokens based on the
 /// parenthesis and the operators precedence.
 /// The parenthesis will get removed.
-pub fn infix_to_prefix(infix: Vec<Token>) -> Result<Vec<Token>, String> {
-    let mut prefix_output: Vec<Token> = Vec::new();
+pub fn infix_to_postfix(infix: Vec<Token>) -> Result<Vec<Token>, String> {
+    let mut postfix_output: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
     for t in infix {
         match t {
             Token::Keyword(_) => {unimplemented!()}
-            Token::Ident(_) => {prefix_output.push(t)}
+            Token::Ident(_) => { postfix_output.push(t)}
             Token::Op(_) => {}
             Token::OpenParenthesis => {stack.push(t)}
             Token::CloseParenthesis => {
-                //while stack.last().unwrap() != Token::OpenParenthesis {
-//
-  //              }
+                while let Some(&Token::OpenParenthesis) = stack.last() {
+                    postfix_output.
+                }
             }
         }
     }
