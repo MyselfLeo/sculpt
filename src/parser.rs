@@ -1,17 +1,32 @@
-// A => B        A /\ (B => C)
-// => A B        /\ A => B C
+use std::fmt::{Display, format};
+
+use crate::inductive::{Formula, Op};
+
+use super::inductive;
+
+
 
 const INFIX_OPERATORS: [&str; 3] = ["=>", "/\\", "\\/"];
 //const UNARY_OPERATORS: [&str; 1] = ["~"];
 const OPERATORS: [&str; 4] = ["=>", "/\\", "\\/", "~"];
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Keyword {
     Context
 }
 
+impl Display for Keyword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Keyword::Context => write!(f, "Context"),
+        }
+    }
+}
 
-#[derive(Debug)]
+
+
+
+#[derive(Debug, Clone)]
 pub enum Token {
     Keyword(Keyword),
     Ident(String),
@@ -34,7 +49,7 @@ enum LexerStates {
 /// (higher precedence = applied before)
 ///
 /// Returns None if op's precedence is not defined
-fn get_precedence(op: &str) -> Option<u8> {
+fn get_precidence(op: &str) -> Option<u8> {
     match op {
         "/\\" | "\\/" => Some(2),
         "~" => Some(3),
@@ -139,28 +154,99 @@ pub fn lex(src: String) -> Result<Vec<Token>, String> {
 /// Convert infix tokens to postfix tokens based on the
 /// parenthesis and the operators precedence.
 /// The parenthesis will get removed.
-pub fn infix_to_postfix(infix: Vec<Token>) -> Result<Vec<Token>, String> {
+pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
+
+    // Shunting-Yard algorithm
     let mut postfix_output: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
     for t in infix {
         match t {
-            Token::Keyword(_) => {unimplemented!()}
-            Token::Ident(_) => { postfix_output.push(t)}
-            Token::Op(_) => {}
-            Token::OpenParenthesis => {stack.push(t)}
-            Token::CloseParenthesis => {
-                while let Some(&Token::OpenParenthesis) = stack.last() {
-                    postfix_output.
+            Token::Keyword(_) => {postfix_output.push(t.clone())}
+            Token::Ident(_) => { postfix_output.push(t.clone())}
+            Token::Op(ref crrt) => {
+                let crrt_precedence = get_precidence(crrt).ok_or(format!("Unknown precedence of {crrt}"))?;
+
+                while let Some(Token::Op(othr)) = stack.last() {
+                    let othr_precedence = get_precidence(othr).ok_or(format!("Unknown precedence of {othr}"))?;
+
+                    if othr_precedence >= crrt_precedence {
+                        postfix_output.push(stack.pop().unwrap())
+                    }
                 }
+
+                stack.push(t.clone())
+            }
+            Token::OpenParenthesis => {stack.push(t.clone())}
+            Token::CloseParenthesis => {
+                while let Some(&Token::Op(_)) = stack.last() {
+                    postfix_output.push(stack.pop().unwrap())
+                }
+                 if let Some(Token::OpenParenthesis) = stack.pop() { /* expected */ }
+                 else { return Err("Invalid expression".to_string()) }
             }
         }
     }
 
-    todo!();
+    while let Some(t) = stack.pop() {
+        postfix_output.push(t);
+    }
+
+    Ok(postfix_output)
 }
 
 
 // todo: recomputing of parenthesis
 // if a node of the tree has a smaller precedence that its parent,
 // put parenthesis around it
+
+
+
+
+
+/// Take postfix list of tokens and build a Formula from it
+pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String> {
+    let mut formula_stack: Vec<Box<Formula>> = Vec::new();
+
+
+    for token in postfix {
+        let formula = match token {
+            Token::Ident(id) => Formula::Variable(id.clone()),
+            Token::Op(op) => match op.as_str() {
+                "~" => Formula::Not(formula_stack.pop().unwrap()),
+                "=>" => {
+                    let rhs = formula_stack.pop().unwrap();
+                    let lhs = formula_stack.pop().unwrap();
+
+                    Formula::Op(Op::Implies, lhs, rhs)
+                },
+                "/\\" => {
+                    let rhs = formula_stack.pop().unwrap();
+                    let lhs = formula_stack.pop().unwrap();
+
+                    Formula::Op(Op::And, lhs, rhs)
+                },
+                "\\/" => {
+                    let rhs = formula_stack.pop().unwrap();
+                    let lhs = formula_stack.pop().unwrap();
+
+                    Formula::Op(Op::Or, lhs, rhs)
+                },
+                _ => return Err(format!("Unsupported operator {op}"))
+            },
+
+            Token::Keyword(kw) => { return Err(format!("Unexpected keyword '{kw}'")) },
+            Token::OpenParenthesis => { return Err("Unexpected '('".to_string()) },
+            Token::CloseParenthesis => { return Err("Unexpected '('".to_string()) },
+        };
+
+        formula_stack.push(Box::new(formula));
+    }
+
+
+    if formula_stack.len() > 1 { return Err("Invalid expression".to_string()); }
+    match formula_stack.pop() {
+        Some(f) => Ok(f),
+        None => Err("Invalid expression".to_string()),
+    }
+}

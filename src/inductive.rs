@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Op {
     Or,
     And,
@@ -5,7 +6,7 @@ pub enum Op {
 }
 
 
-
+#[derive(Debug)]
 pub enum Formula {
     Variable(String),
     Not(Box<Formula>),
