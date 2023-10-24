@@ -2,7 +2,7 @@ mod inductive;
 mod parser;
 
 fn main() {
-    let formula = "~A => (B /\\ C)";
+    let formula = "~A => B /\\ C";
     let tokens = parser::lex(formula.to_string()).unwrap();
     println!("{:?}", tokens);
     let postfix = parser::infix_to_postfix(&tokens).unwrap();
