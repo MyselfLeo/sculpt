@@ -1,3 +1,7 @@
+mod inductive;
+mod parser;
+
 fn main() {
-    println!("Hello, world!");
+    let formula = "~A => (B /\\ C)";
+    println!("{:?}", parser::lex(formula.to_string()));
 }
