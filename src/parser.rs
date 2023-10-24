@@ -173,6 +173,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
                     if othr_precedence >= crrt_precedence {
                         postfix_output.push(stack.pop().unwrap())
                     }
+                    else {break;}
                 }
 
                 stack.push(t.clone())
