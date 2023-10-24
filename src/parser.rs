@@ -150,12 +150,17 @@ pub fn infix_to_prefix(infix: Vec<Token>) -> Result<Vec<Token>, String> {
             Token::Op(_) => {}
             Token::OpenParenthesis => {stack.push(t)}
             Token::CloseParenthesis => {
-                while stack.last().unwrap() != Token::OpenParenthesis {
-
-                }
+                //while stack.last().unwrap() != Token::OpenParenthesis {
+//
+  //              }
             }
         }
     }
 
     todo!();
 }
+
+
+// todo: recomputing of parenthesis
+// if a node of the tree has a smaller precedence that its parent,
+// put parenthesis around it
