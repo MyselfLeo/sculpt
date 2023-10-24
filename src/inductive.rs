@@ -52,10 +52,10 @@ impl Display for Formula {
                 // Put parenthesis around lhs or rhs if needed by precidence
                 let my_precidence = self.get_precidence();
                 
-                let lhs_string = if lhs.get_precidence() < my_precidence { format!("({})", lhs) }
+                let lhs_string = if lhs.get_precidence() <= my_precidence { format!("({})", lhs) }
                 else { format!("{}", lhs) };
 
-                let rhs_string = if rhs.get_precidence() < my_precidence { format!("({})", rhs) }
+                let rhs_string = if rhs.get_precidence() <= my_precidence { format!("({})", rhs) }
                 else { format!("{}", rhs) };
 
                 write!(f, "{lhs_string} {} {rhs_string}", op.to_string())
