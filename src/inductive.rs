@@ -1,41 +1,76 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
-pub enum Op {
-    Or,
-    And,
-    Implies
-}
+use crate::parser;
 
-impl Op {
-    pub fn to_string(&self) -> String {
-        match self {
-            Op::Or => "\\/",
-            Op::And => "/\\",
-            Op::Implies => "=>",
-        }.to_string()
-    }
+#[derive(PartialEq)]
+pub enum Associativity {
+    Left,
+    Right
 }
-
 
 #[derive(Debug)]
 pub enum Formula {
     Variable(String),
     Not(Box<Formula>),
-    Op(Op, Box<Formula>, Box<Formula>)
+    Or(Box<Formula>, Box<Formula>),
+    And(Box<Formula>, Box<Formula>),
+    Implies(Box<Formula>, Box<Formula>),
 }
 
 impl Formula {
-    pub fn get_precidence(&self) -> u8 {
+    pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
+        let tokens = parser::lex(str)?;
+        let postfix = parser::infix_to_postfix(&tokens)?;
+        parser::formula_from_tokens(&postfix)
+    }
+
+    pub fn get_precedence(&self) -> u8 {
         match self {
             Formula::Variable(_) => 4,
             Formula::Not(_) => 3,
-            Formula::Op(Op::And | Op::Or, _, _) => 2,
-            Formula::Op(Op::Implies, _, _) => 1
+            Formula::And(_, _) | Formula::Or(_, _) => 2,
+            Formula::Implies(_, _) => 1
+        }
+    }
+
+    pub fn get_op_symbol(&self) -> &'static str {
+        match self {
+            Formula::Variable(_) => "",
+            Formula::Not(_) => "~",
+            Formula::Or(_, _) => "\\/",
+            Formula::And(_, _) => "/\\",
+            Formula::Implies(_, _) => "=>"
         }
     }
 }
 
+
+
+macro_rules! display_binary_left {
+    ($self:ident, $lhs:ident, $rhs:ident, $f:ident) => {
+        {
+            let lhs_str = if $lhs.get_precedence() < $self.get_precedence() { format!("({})", $lhs) }
+                      else { format!("{}", $lhs) };
+            let rhs_str = if $rhs.get_precedence() <= $self.get_precedence() { format!("({})", $rhs) }
+                          else { format!("{}", $rhs) };
+
+            write!($f, "{lhs_str} {} {rhs_str}", $self.get_op_symbol())
+        }
+    }
+}
+
+macro_rules! display_binary_right {
+    ($self:ident, $lhs:ident, $rhs:ident, $f:ident) => {
+        {
+            let lhs_str = if $lhs.get_precedence() <= $self.get_precedence() { format!("({})", $lhs) }
+                      else { format!("{}", $lhs) };
+            let rhs_str = if $rhs.get_precedence() < $self.get_precedence() { format!("({})", $rhs) }
+                          else { format!("{}", $rhs) };
+
+            write!($f, "{lhs_str} {} {rhs_str}", $self.get_op_symbol())
+        }
+    }
+}
 
 
 impl Display for Formula {
@@ -48,18 +83,9 @@ impl Display for Formula {
                 other => write!(f, "~({})", *other)
             },
 
-            Formula::Op(op, lhs, rhs) => {
-                // Put parenthesis around lhs or rhs if needed by precidence
-                let my_precidence = self.get_precidence();
-                
-                let lhs_string = if lhs.get_precidence() <= my_precidence { format!("({})", lhs) }
-                else { format!("{}", lhs) };
-
-                let rhs_string = if rhs.get_precidence() <= my_precidence { format!("({})", rhs) }
-                else { format!("{}", rhs) };
-
-                write!(f, "{lhs_string} {} {rhs_string}", op.to_string())
-            },
+            Formula::Or(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
+            Formula::And(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
+            Formula::Implies(lhs, rhs) => display_binary_right!(self, lhs, rhs, f)
         }
     }
 }
