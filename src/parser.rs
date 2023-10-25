@@ -1,14 +1,12 @@
-use std::fmt::{Display, format};
+use std::fmt::Display;
 
-use crate::inductive::{Formula, Op};
+use crate::inductive::Formula;
 
-use super::inductive;
+pub enum Associativity {
+    Left,
+    Right
+}
 
-
-
-const INFIX_OPERATORS: [&str; 3] = ["=>", "/\\", "\\/"];
-//const UNARY_OPERATORS: [&str; 1] = ["~"];
-const OPERATORS: [&str; 4] = ["=>", "/\\", "\\/", "~"];
 
 #[derive(Debug, Clone, Copy)]
 pub enum Keyword {
@@ -23,14 +21,79 @@ impl Display for Keyword {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Op {
+    Not,
+    Or,
+    And,
+    Implies
+}
 
+impl Op {
+    pub fn from_str(op: &str) -> Option<Op> {
+        match op {
+            "~" => Some(Op::Not),
+            "\\/" => Some(Op::Or),
+            "/\\" => Some(Op::And),
+            "=>" => Some(Op::Implies),
+            _ => None
+        }
+    }
+
+    /// Return the precedence of the operator.
+    /// The greater the returned value, the higher the precedence
+    /// (higher precedence = applied before)
+    pub fn get_precedence(&self) -> u8 {
+        match self {
+            Op::Not => 3,
+            Op::Or => 2,
+            Op::And => 2,
+            Op::Implies => 1
+        }
+    }
+
+
+    /// Return the associativity of the operator.
+    /// In the context of unary operators (like Not),
+    /// Left means its a postfix operator while Right means its a prefix operator.
+    pub fn get_associativity(&self) -> Associativity {
+        match self {
+            Op::Not => Associativity::Right,
+            Op::Or => Associativity::Left,
+            Op::And => Associativity::Left,
+            Op::Implies => Associativity::Right
+        }
+    }
+
+
+    /// Return the arity of the operator, i.e. its number of operands
+    pub fn get_arity(&self) -> u8 {
+        match self {
+            Op::Not => 1,
+            Op::Or => 2,
+            Op::And => 2,
+            Op::Implies => 2
+        }
+    }
+}
+
+impl Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Op::Not => write!(f, "~"),
+            Op::Or => write!(f, "\\/"),
+            Op::And => write!(f, "/\\"),
+            Op::Implies => write!(f, "=>")
+        }
+    }
+}
 
 
 #[derive(Debug, Clone)]
 pub enum Token {
     Keyword(Keyword),
     Ident(String),
-    Op(String),
+    Op(Op),
     OpenParenthesis,
     CloseParenthesis,
 }
@@ -44,27 +107,14 @@ enum LexerStates {
 }
 
 
-/// Return the precedence of the operator.
-/// The greater the returned value, the higher the precedence
-/// (higher precedence = applied before)
-///
-/// Returns None if op's precedence is not defined
-fn get_precidence(op: &str) -> Option<u8> {
-    match op {
-        "/\\" | "\\/" => Some(2),
-        "~" => Some(3),
-        "=>" => Some(1),
-        _ => None
-    }
-}
-
-
 
 
 macro_rules! op_push {
     ($buf:ident, $res:ident, $state:ident) => {
-        if OPERATORS.contains(&$buf.as_str()) { $res.push(Token::Op($buf.clone())) }
-        else { return Err(format!("Expected operator, got {} instead", $buf)) }
+        match Op::from_str(&$buf.as_str()) {
+            Some(op) => $res.push(Token::Op(op)),
+            None => return Err(format!("Expected operator, got {} instead", $buf))
+        }
         $buf.clear();
         $state = LexerStates::Idle;
     };
@@ -152,11 +202,10 @@ pub fn lex(src: String) -> Result<Vec<Token>, String> {
 
 
 /// Convert infix tokens to postfix tokens based on the
-/// parenthesis and the operators precedence.
+/// parenthesis, the operators precedence and the associativity of operators.
 /// The parenthesis will get removed.
 pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
 
-    // Shunting-Yard algorithm
     let mut postfix_output: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
@@ -164,21 +213,41 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
         match t {
             Token::Keyword(_) => {postfix_output.push(t.clone())}
             Token::Ident(_) => { postfix_output.push(t.clone())}
-            Token::Op(ref crrt) => {
-                let crrt_precedence = get_precidence(crrt).ok_or(format!("Unknown precedence of {crrt}"))?;
 
-                while let Some(Token::Op(othr)) = stack.last() {
-                    let othr_precedence = get_precidence(othr).ok_or(format!("Unknown precedence of {othr}"))?;
+            Token::Op(op) => {
+                match (op.get_arity(), op.get_associativity()) {
+                    (1, Associativity::Left) => postfix_output.push(t.clone()),
+                    (1, Associativity::Right) => stack.push(t.clone()),
 
-                    if othr_precedence >= crrt_precedence {
-                        postfix_output.push(stack.pop().unwrap())
-                    }
-                    else {break;}
+                    (2, Associativity::Left) => {
+                        while let Some(Token::Op(othr)) = stack.last() {
+                            if othr.get_precedence() >= op.get_precedence() {
+                                postfix_output.push(stack.pop().unwrap())
+                            }
+                            else {break;}
+                        }
+
+                        stack.push(t.clone())
+                    },
+
+                    (2, Associativity::Right) => {
+                        while let Some(Token::Op(othr)) = stack.last() {
+                            if othr.get_precedence() > op.get_precedence() {
+                                postfix_output.push(stack.pop().unwrap())
+                            }
+                            else {break;}
+                        }
+
+                        stack.push(t.clone())
+                    },
+
+                    _ => return Err(format!("Unsupported operator {}", op))
                 }
-
-                stack.push(t.clone())
             }
+
+
             Token::OpenParenthesis => {stack.push(t.clone())}
+
             Token::CloseParenthesis => {
                 while let Some(&Token::Op(_)) = stack.last() {
                     postfix_output.push(stack.pop().unwrap())
@@ -197,10 +266,6 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
 }
 
 
-// todo: recomputing of parenthesis
-// if a node of the tree has a smaller precedence that its parent,
-// put parenthesis around it
-
 
 
 
@@ -213,32 +278,24 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
     for token in postfix {
         let formula = match token {
             Token::Ident(id) => Formula::Variable(id.clone()),
-            Token::Op(op) => match op.as_str() {
-                "~" => Formula::Not(formula_stack.pop().unwrap()),
-                "=>" => {
+            Token::Op(op) => match op {
+                Op::Not => Formula::Not(formula_stack.pop().unwrap()),
+                Op::Or | Op::And | Op::Implies => {
                     let rhs = formula_stack.pop().unwrap();
                     let lhs = formula_stack.pop().unwrap();
 
-                    Formula::Op(Op::Implies, lhs, rhs)
-                },
-                "/\\" => {
-                    let rhs = formula_stack.pop().unwrap();
-                    let lhs = formula_stack.pop().unwrap();
-
-                    Formula::Op(Op::And, lhs, rhs)
-                },
-                "\\/" => {
-                    let rhs = formula_stack.pop().unwrap();
-                    let lhs = formula_stack.pop().unwrap();
-
-                    Formula::Op(Op::Or, lhs, rhs)
-                },
-                _ => return Err(format!("Unsupported operator {op}"))
+                    match op {
+                        Op::Not => unreachable!(),
+                        Op::Or => Formula::Or(lhs, rhs),
+                        Op::And => Formula::And(lhs, rhs),
+                        Op::Implies => Formula::Implies(lhs, rhs)
+                    }
+                }
             },
 
             Token::Keyword(kw) => { return Err(format!("Unexpected keyword '{kw}'")) },
             Token::OpenParenthesis => { return Err("Unexpected '('".to_string()) },
-            Token::CloseParenthesis => { return Err("Unexpected '('".to_string()) },
+            Token::CloseParenthesis => { return Err("Unexpected ')'".to_string()) },
         };
 
         formula_stack.push(Box::new(formula));

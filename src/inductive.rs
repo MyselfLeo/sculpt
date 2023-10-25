@@ -1,37 +1,37 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
-pub enum Op {
-    Or,
-    And,
-    Implies
+#[derive(PartialEq)]
+pub enum Associativity {
+    Left,
+    Right
 }
-
-impl Op {
-    pub fn to_string(&self) -> String {
-        match self {
-            Op::Or => "\\/",
-            Op::And => "/\\",
-            Op::Implies => "=>",
-        }.to_string()
-    }
-}
-
 
 #[derive(Debug)]
 pub enum Formula {
     Variable(String),
     Not(Box<Formula>),
-    Op(Op, Box<Formula>, Box<Formula>)
+    Or(Box<Formula>, Box<Formula>),
+    And(Box<Formula>, Box<Formula>),
+    Implies(Box<Formula>, Box<Formula>),
 }
 
 impl Formula {
-    pub fn get_precidence(&self) -> u8 {
+    pub fn get_precedence(&self) -> u8 {
         match self {
             Formula::Variable(_) => 4,
             Formula::Not(_) => 3,
-            Formula::Op(Op::And | Op::Or, _, _) => 2,
-            Formula::Op(Op::Implies, _, _) => 1
+            Formula::And(_, _) | Formula::Or(_, _) => 2,
+            Formula::Implies(_, _) => 1
+        }
+    }
+
+    pub fn get_associativity(&self) -> Associativity {
+        match self {
+            Formula::Variable(_) => unreachable!(),
+            Formula::Not(_) => Associativity::Right,
+            Formula::Or(_, _) => Associativity::Left,
+            Formula::And(_, _) => Associativity::Left,
+            Formula::Implies(_, _) => Associativity::Right
         }
     }
 }
@@ -40,6 +40,8 @@ impl Formula {
 
 impl Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let self_prcd = self.get_precedence();
+
         match self {
             Formula::Variable(v) => write!(f, "{}", v),
 
@@ -48,18 +50,35 @@ impl Display for Formula {
                 other => write!(f, "~({})", *other)
             },
 
-            Formula::Op(op, lhs, rhs) => {
-                // Put parenthesis around lhs or rhs if needed by precidence
-                let my_precidence = self.get_precidence();
-                
-                let lhs_string = if lhs.get_precidence() <= my_precidence { format!("({})", lhs) }
-                else { format!("{}", lhs) };
+            Formula::Or(lhs, rhs) => {
+                let lhs_str = if lhs.get_precedence() < self_prcd { format!("({})", lhs) }
+                                     else { format!("{}", lhs) };
 
-                let rhs_string = if rhs.get_precidence() <= my_precidence { format!("({})", rhs) }
-                else { format!("{}", rhs) };
+                let rhs_str = if rhs.get_precedence() <= self_prcd { format!("({})", rhs) }
+                                     else { format!("{}", rhs) };
 
-                write!(f, "{lhs_string} {} {rhs_string}", op.to_string())
-            },
+                write!(f, "{lhs_str} \\/ {rhs_str}")
+            }
+
+            Formula::And(lhs, rhs) => {
+                let lhs_str = if lhs.get_precedence() < self_prcd { format!("({})", lhs) }
+                                     else { format!("{}", lhs) };
+
+                let rhs_str = if rhs.get_precedence() <= self_prcd { format!("({})", rhs) }
+                                     else { format!("{}", rhs) };
+
+                write!(f, "{lhs_str} /\\ {rhs_str}")
+            }
+
+            Formula::Implies(lhs, rhs) => {
+                let lhs_str = if lhs.get_precedence() <= self_prcd { format!("({})", lhs) }
+                                     else { format!("{}", lhs) };
+
+                let rhs_str = if rhs.get_precedence() < self_prcd { format!("({})", rhs) }
+                                     else { format!("{}", rhs) };
+
+                write!(f, "{lhs_str} => {rhs_str}")
+            }
         }
     }
 }
