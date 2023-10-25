@@ -8,5 +8,11 @@ pub struct Hypothesis {
 
 pub struct Sequent {
     pub antecedents: Vec<Hypothesis>,
-    pub consequent: Formula
+    pub goal: Formula
+}
+
+
+impl Sequent {
+    // pub fn apply_rule(rule: Rule) -> Vec<Sequent> {
+    // }
 }
