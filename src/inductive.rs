@@ -24,14 +24,49 @@ impl Formula {
             Formula::Implies(_, _) => 1
         }
     }
+
+    pub fn get_op_symbol(&self) -> &'static str {
+        match self {
+            Formula::Variable(_) => "",
+            Formula::Not(_) => "~",
+            Formula::Or(_, _) => "\\/",
+            Formula::And(_, _) => "/\\",
+            Formula::Implies(_, _) => "=>"
+        }
+    }
 }
 
 
 
+macro_rules! display_binary_left {
+    ($self:ident, $lhs:ident, $rhs:ident, $f:ident) => {
+        {
+            let lhs_str = if $lhs.get_precedence() < $self.get_precedence() { format!("({})", $lhs) }
+                      else { format!("{}", $lhs) };
+            let rhs_str = if $rhs.get_precedence() <= $self.get_precedence() { format!("({})", $rhs) }
+                          else { format!("{}", $rhs) };
+
+            write!($f, "{lhs_str} {} {rhs_str}", $self.get_op_symbol())
+        }
+    }
+}
+
+macro_rules! display_binary_right {
+    ($self:ident, $lhs:ident, $rhs:ident, $f:ident) => {
+        {
+            let lhs_str = if $lhs.get_precedence() <= $self.get_precedence() { format!("({})", $lhs) }
+                      else { format!("{}", $lhs) };
+            let rhs_str = if $rhs.get_precedence() < $self.get_precedence() { format!("({})", $rhs) }
+                          else { format!("{}", $rhs) };
+
+            write!($f, "{lhs_str} {} {rhs_str}", $self.get_op_symbol())
+        }
+    }
+}
+
+
 impl Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let self_prcd = self.get_precedence();
-
         match self {
             Formula::Variable(v) => write!(f, "{}", v),
 
@@ -40,35 +75,9 @@ impl Display for Formula {
                 other => write!(f, "~({})", *other)
             },
 
-            Formula::Or(lhs, rhs) => {
-                let lhs_str = if lhs.get_precedence() < self_prcd { format!("({})", lhs) }
-                                     else { format!("{}", lhs) };
-
-                let rhs_str = if rhs.get_precedence() <= self_prcd { format!("({})", rhs) }
-                                     else { format!("{}", rhs) };
-
-                write!(f, "{lhs_str} \\/ {rhs_str}")
-            }
-
-            Formula::And(lhs, rhs) => {
-                let lhs_str = if lhs.get_precedence() < self_prcd { format!("({})", lhs) }
-                                     else { format!("{}", lhs) };
-
-                let rhs_str = if rhs.get_precedence() <= self_prcd { format!("({})", rhs) }
-                                     else { format!("{}", rhs) };
-
-                write!(f, "{lhs_str} /\\ {rhs_str}")
-            }
-
-            Formula::Implies(lhs, rhs) => {
-                let lhs_str = if lhs.get_precedence() <= self_prcd { format!("({})", lhs) }
-                                     else { format!("{}", lhs) };
-
-                let rhs_str = if rhs.get_precedence() < self_prcd { format!("({})", rhs) }
-                                     else { format!("{}", rhs) };
-
-                write!(f, "{lhs_str} => {rhs_str}")
-            }
+            Formula::Or(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
+            Formula::And(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
+            Formula::Implies(lhs, rhs) => display_binary_right!(self, lhs, rhs, f)
         }
     }
 }
