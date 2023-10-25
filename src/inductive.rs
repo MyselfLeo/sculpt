@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::parser;
+
 #[derive(PartialEq)]
 pub enum Associativity {
     Left,
@@ -16,6 +18,12 @@ pub enum Formula {
 }
 
 impl Formula {
+    pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
+        let tokens = parser::lex(str)?;
+        let postfix = parser::infix_to_postfix(&tokens)?;
+        parser::formula_from_tokens(&postfix)
+    }
+
     pub fn get_precedence(&self) -> u8 {
         match self {
             Formula::Variable(_) => 4,

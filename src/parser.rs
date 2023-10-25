@@ -142,7 +142,7 @@ macro_rules! buf_push {
 
 
 /// Convert the string expression into a Vec of Tokens
-pub fn lex(src: String) -> Result<Vec<Token>, String> {
+pub fn lex(src: &str) -> Result<Vec<Token>, String> {
     let mut res: Vec<Token> = Vec::new();
     let mut buf = String::new();
     let mut state = LexerStates::Idle;
