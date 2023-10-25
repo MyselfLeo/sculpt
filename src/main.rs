@@ -1,6 +1,7 @@
 mod inductive;
 mod parser;
 mod sequent;
+mod rule;
 
 
 use crate::inductive::Formula;
