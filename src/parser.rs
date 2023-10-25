@@ -108,7 +108,6 @@ enum LexerStates {
 
 
 
-
 macro_rules! op_push {
     ($buf:ident, $res:ident, $state:ident) => {
         match Op::from_str(&$buf.as_str()) {
@@ -133,9 +132,9 @@ macro_rules! buf_push {
     ($buf:ident, $res:ident, $state:ident) => {
         if !$buf.is_empty() {
             match $state {
-            LexerStates::Idle => {}
-            LexerStates::Op => { op_push!($buf, $res, $state); }
-            LexerStates::Ident => { ident_push!($buf, $res, $state); }
+                LexerStates::Idle => {}
+                LexerStates::Op => { op_push!($buf, $res, $state); }
+                LexerStates::Ident => { ident_push!($buf, $res, $state); }
             }
         }
     };

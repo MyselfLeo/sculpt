@@ -24,16 +24,6 @@ impl Formula {
             Formula::Implies(_, _) => 1
         }
     }
-
-    pub fn get_associativity(&self) -> Associativity {
-        match self {
-            Formula::Variable(_) => unreachable!(),
-            Formula::Not(_) => Associativity::Right,
-            Formula::Or(_, _) => Associativity::Left,
-            Formula::And(_, _) => Associativity::Left,
-            Formula::Implies(_, _) => Associativity::Right
-        }
-    }
 }
 
 
