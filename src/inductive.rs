@@ -8,7 +8,7 @@ pub enum Associativity {
     Right
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Formula {
     Variable(String),
     Not(Box<Formula>),
