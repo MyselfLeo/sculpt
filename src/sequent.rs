@@ -7,18 +7,23 @@ use crate::rule::Rule;
  #[derive(Clone)]
 pub struct Hypothesis {
     pub name: String,
-    pub formula: Box<Formula>
+    pub formula: Formula
 }
 
 pub struct Sequent {
     pub antecedents: Vec<Hypothesis>,
-    pub goal: Box<Formula>
+    pub consequent: Box<Formula>
 }
 
 
 impl Sequent {
-    pub fn start(formula: Box<Formula>) -> Sequent {
-        Sequent { antecedents: vec![], goal: formula }
+    // Antecedents must be named
+    pub fn new(antecedents: Vec<Hypothesis>, consequent: Box<Formula>) -> Sequent {
+        Sequent { antecedents, consequent: consequent.clone() }
+    }
+
+    pub fn add_antecedent(&mut self, antecedent: Hypothesis) {
+        self.antecedents.push(antecedent);
     }
 
     pub fn apply_rule(&self, rule: Box<dyn Rule>) -> Result<Vec<Sequent>, ()> {
@@ -32,6 +37,6 @@ impl Display for Sequent {
             write!(f, "{}: {}\n", h.name, h.formula)?;
         }
         write!(f, "──────────────────────────\n")?;
-        write!(f, "{}", self.goal)
+        write!(f, "{}", self.consequent)
     }
 }

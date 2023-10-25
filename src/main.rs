@@ -2,6 +2,7 @@ mod inductive;
 mod parser;
 mod sequent;
 mod rule;
+mod proof;
 
 
 use crate::{inductive::Formula, sequent::Sequent, rule::Intro};
