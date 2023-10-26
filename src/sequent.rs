@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 use crate::inductive::Formula;
-use crate::rule::Rule;
 
  
  #[derive(Clone)]
@@ -22,21 +21,22 @@ impl Sequent {
         Sequent { antecedents, consequent: consequent.clone() }
     }
 
-    pub fn add_antecedent(&mut self, antecedent: Hypothesis) {
-        self.antecedents.push(antecedent);
+    /// Returns a sequent with no antecedents
+    pub fn from(formula: Box<Formula>) -> Sequent {
+        Sequent::new(vec![], formula)
     }
 
-    pub fn apply_rule(&self, rule: Box<dyn Rule>) -> Result<Vec<Sequent>, ()> {
-        rule.apply(self)
+    pub fn add_antecedent(&mut self, antecedent: Hypothesis) {
+        self.antecedents.push(antecedent);
     }
 }
 
 impl Display for Sequent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for h in &self.antecedents {
-            write!(f, "{}: {}\n", h.name, h.formula)?;
+            write!(f, "│ {}: {}\n", h.name, h.formula)?;
         }
-        write!(f, "──────────────────────────\n")?;
-        write!(f, "{}", self.consequent)
+        write!(f, "│──────────────────────────\n")?;
+        write!(f, "│ {}", self.consequent)
     }
 }
