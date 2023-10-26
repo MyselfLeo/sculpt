@@ -3,10 +3,12 @@ mod parser;
 mod sequent;
 mod rule;
 mod proof;
+mod repl;
 
 
 use crate::inductive::Formula;
 use crate::proof::Proof;
+use crate::repl::Repl;
 use crate::rule::Rule;
 
 // "((~A \\/ B) => (C => D) /\\ C)"
@@ -14,7 +16,7 @@ use crate::rule::Rule;
 // (A => B) => A => B
 
 fn main() {
-    let formula = Formula::from_str("(A => B) => A => B").unwrap();
+    /*let formula = Formula::from_str("(A => B) => A => B").unwrap();
     let mut proof = Proof::start(formula);
     proof.print();
 
@@ -36,5 +38,8 @@ fn main() {
 
     proof.apply(Rule::Axiom).unwrap();
     println!("\n\n");
-    proof.print();
+    proof.print();*/
+
+    let mut repl = Repl::new();
+    repl.start().unwrap();
 }
