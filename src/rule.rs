@@ -1,14 +1,13 @@
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
-use crate::sequent::{Sequent, Hypothesis};
-use crate::Formula;
+use crate::sequent::Sequent;
+use crate::inductive::Formula;
 
 
 
 
 
 pub enum Rule {
-    Intro(String),
+    Intro,
     SplitAnd,
     Elim(String),
     Axiom
@@ -17,7 +16,7 @@ pub enum Rule {
 impl Display for Rule {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Rule::Intro(_) => write!(f, "Intro"),
+            Rule::Intro => write!(f, "Intro"),
             Rule::SplitAnd => write!(f, "SplitAnd"),
             Rule::Elim(s) => write!(f, "Apply {s}"),
             Rule::Axiom => write!(f, "Axiom")
@@ -29,11 +28,11 @@ impl Rule {
     pub fn apply(&self, sequent: &Sequent) -> Result<Vec<Sequent>, ()> {
 
         match self {
-            Rule::Intro(hyp_name) => {
+            Rule::Intro=> {
                 match sequent.consequent.as_ref() {
                     Formula::Implies(lhs, rhs) => {
                         let mut antecedents = sequent.antecedents.clone();
-                        antecedents.push(Hypothesis {name: hyp_name.clone(), formula: *lhs.to_owned() });
+                        antecedents.push(lhs.to_owned());
                         Ok(vec![Sequent { antecedents, consequent: rhs.to_owned() }])
                     },
                     _ => Err(())
@@ -77,10 +76,7 @@ impl Rule {
 
 
             Rule::Axiom => {
-                let is_axiom = sequent.antecedents
-                    .iter()
-                    .find(|h| &h.formula == sequent.consequent.deref())
-                    .is_some();
+                let is_axiom = sequent.antecedents.contains(&sequent.consequent);
 
                 if is_axiom { Ok(vec![]) }
                 else { Err(()) }

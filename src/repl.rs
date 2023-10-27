@@ -5,8 +5,6 @@ use crossterm::cursor::MoveTo;
 use crossterm::terminal;
 use crate::inductive::Formula;
 use crate::proof::Proof;
-use crate::repl::ReplError::CommandError;
-use crate::repl::ReplState::{Idle, Proving};
 use crate::rule::Rule;
 
 
@@ -34,7 +32,7 @@ impl PartialEq for ReplState {
 
 pub enum ReplCommand {
     Proof(String),
-    Intro(String),
+    Intro,
     Split(Option<String>),
     Elim(String),
     Axiom,
@@ -68,7 +66,7 @@ impl ReplCommand {
 
         let cmd = match (cname, cparam) {
             ("proof", s) => ReplCommand::Proof(s.to_string()),
-            ("intro", s) => ReplCommand::Intro(s.to_string()),
+            ("intro", "") => ReplCommand::Intro,
 
             ("split", "") => ReplCommand::Split(None),
             ("split", s) => ReplCommand::Split(Some(s.to_string())),
@@ -77,12 +75,13 @@ impl ReplCommand {
             ("axiom", "") => ReplCommand::Axiom,
             ("qed", "") => ReplCommand::Qed,
 
-            ("quit", _) => ReplCommand::Quit,
+            ("quit", _) | ("exit", _) => ReplCommand::Quit,
             ("help", "") => ReplCommand::Help,
 
-            ("axiom", s) => return Err(ReplError::TooMuchArguments),
-            ("qed", s) => return Err(ReplError::TooMuchArguments),
-            ("help", s) => return Err(ReplError::TooMuchArguments),
+            ("intro", _) => return Err(ReplError::TooMuchArguments),
+            ("axiom", _) => return Err(ReplError::TooMuchArguments),
+            ("qed", _) => return Err(ReplError::TooMuchArguments),
+            ("help", _) => return Err(ReplError::TooMuchArguments),
             _ => return Err(ReplError::UnknownCommand)
         };
 
@@ -158,7 +157,7 @@ impl Repl {
     fn execute(&mut self, command: ReplCommand) -> Result<(), ReplError> {
         match command {
             ReplCommand::Proof(p) => {
-                if self.state != Idle {Err(ReplError::InvalidCommand)}
+                if self.state != ReplState::Idle {Err(ReplError::InvalidCommand)}
                 else {
                     let formula = match Formula::from_str(&p) {
                         Ok(f) => f,
@@ -166,16 +165,16 @@ impl Repl {
                     };
 
                     let proof = Proof::start(formula);
-                    self.state = Proving(proof);
+                    self.state = ReplState::Proving(proof);
 
                     Ok(())
                 }
             },
-            ReplCommand::Intro(s) => {
+            ReplCommand::Intro => {
                 match self.state {
-                    Proving(ref mut p) => match p.apply(Rule::Intro(s)) {
+                    ReplState::Proving(ref mut p) => match p.apply(Rule::Intro) {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(CommandError(e))
+                        Err(e) => Err(ReplError::CommandError(e))
                     },
                     _ => Err(ReplError::InvalidCommand)
                 }
@@ -183,18 +182,18 @@ impl Repl {
             ReplCommand::Split(_) => unimplemented!(),
             ReplCommand::Elim(s) => {
                 match self.state {
-                    Proving(ref mut p) => match p.apply(Rule::Elim(s)) {
+                    ReplState::Proving(ref mut p) => match p.apply(Rule::Elim(s)) {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(CommandError(e))
+                        Err(e) => Err(ReplError::CommandError(e))
                     },
                     _ => Err(ReplError::InvalidCommand)
                 }
             },
             ReplCommand::Axiom => {
                 match self.state {
-                    Proving(ref mut p) => match p.apply(Rule::Axiom) {
+                    ReplState::Proving(ref mut p) => match p.apply(Rule::Axiom) {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(CommandError(e))
+                        Err(e) => Err(ReplError::CommandError(e))
                     },
                     _ => Err(ReplError::InvalidCommand)
                 }
