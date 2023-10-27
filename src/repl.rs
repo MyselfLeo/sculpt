@@ -253,7 +253,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p), ReplCommand::FromOr(s)) => {
-                match p.apply(Rule::Keep(Side::Right)) {
+                match p.apply(Rule::FromOr(s)) {
                     Ok(_) => Ok(()),
                     Err(e) => Err(ReplError::CommandError(e))
                 }
