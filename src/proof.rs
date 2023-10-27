@@ -68,4 +68,9 @@ impl Proof {
             }
         }
     }
+
+
+    pub fn is_finished(&self) -> bool {
+        self.current_goal.is_none()
+    }
 }

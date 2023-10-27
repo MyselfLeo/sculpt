@@ -5,7 +5,7 @@ use crossterm::cursor::MoveTo;
 use crossterm::terminal;
 use crate::inductive::Formula;
 use crate::proof::Proof;
-use crate::rule::Rule;
+use crate::rule::{Rule, Side};
 
 
 pub enum ReplState {
@@ -32,10 +32,15 @@ impl PartialEq for ReplState {
 
 pub enum ReplCommand {
     Proof(String),
-    Intro,
-    Split(Option<String>),
-    Elim(String),
     Axiom,
+    Intro,
+    Trans(String),
+    Split,
+    AndLeft(String),
+    AndRight(String),
+    KeepLeft,
+    KeepRight,
+    FromOr(String),
     Qed,
 
     Quit,
@@ -66,18 +71,30 @@ impl ReplCommand {
 
         let cmd = match (cname, cparam) {
             ("proof", s) => ReplCommand::Proof(s.to_string()),
+
+            ("axiom", "") => ReplCommand::Axiom,
             ("intro", "") => ReplCommand::Intro,
 
-            ("split", "") => ReplCommand::Split(None),
-            ("split", s) => ReplCommand::Split(Some(s.to_string())),
+            ("split", "") => ReplCommand::Split,
 
-            ("elim", s) => ReplCommand::Elim(s.to_string()),
-            ("axiom", "") => ReplCommand::Axiom,
+            ("trans", s) => ReplCommand::Trans(s.to_string()),
+
+            ("and_left", s) => ReplCommand::AndLeft(s.to_string()),
+            ("and_right", s) => ReplCommand::AndRight(s.to_string()),
+
+            ("keep_left", "") => ReplCommand::KeepLeft,
+            ("keep_right", "") => ReplCommand::KeepRight,
+
+            ("from_or", s) => ReplCommand::FromOr(s.to_string()),
+
+
             ("qed", "") => ReplCommand::Qed,
 
             ("quit", _) | ("exit", _) => ReplCommand::Quit,
             ("help", "") => ReplCommand::Help,
 
+            ("split", _) => return Err(ReplError::TooMuchArguments),
+            ("keep_left", _) | ("keep_right", _) => return Err(ReplError::TooMuchArguments),
             ("intro", _) => return Err(ReplError::TooMuchArguments),
             ("axiom", _) => return Err(ReplError::TooMuchArguments),
             ("qed", _) => return Err(ReplError::TooMuchArguments),
@@ -155,55 +172,112 @@ impl Repl {
 
 
     fn execute(&mut self, command: ReplCommand) -> Result<(), ReplError> {
-        match command {
-            ReplCommand::Proof(p) => {
-                if self.state != ReplState::Idle {Err(ReplError::InvalidCommand)}
-                else {
-                    let formula = match Formula::from_str(&p) {
-                        Ok(f) => f,
-                        Err(e) => return Err(ReplError::CommandError(e))
-                    };
+        match (&mut self.state, command) {
 
-                    let proof = Proof::start(formula);
-                    self.state = ReplState::Proving(proof);
+            // Start of proof
+            (ReplState::Idle, ReplCommand::Proof(p)) => {
+                let formula = match Formula::from_str(&p) {
+                    Ok(f) => f,
+                    Err(e) => return Err(ReplError::CommandError(e))
+                };
 
-                    Ok(())
-                }
-            },
-            ReplCommand::Intro => {
-                match self.state {
-                    ReplState::Proving(ref mut p) => match p.apply(Rule::Intro) {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(ReplError::CommandError(e))
-                    },
-                    _ => Err(ReplError::InvalidCommand)
-                }
-            },
-            ReplCommand::Split(_) => unimplemented!(),
-            ReplCommand::Elim(s) => {
-                match self.state {
-                    ReplState::Proving(ref mut p) => match p.apply(Rule::Elim(s)) {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(ReplError::CommandError(e))
-                    },
-                    _ => Err(ReplError::InvalidCommand)
-                }
-            },
-            ReplCommand::Axiom => {
-                match self.state {
-                    ReplState::Proving(ref mut p) => match p.apply(Rule::Axiom) {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(ReplError::CommandError(e))
-                    },
-                    _ => Err(ReplError::InvalidCommand)
-                }
-            },
-            ReplCommand::Qed => unimplemented!(),
-            ReplCommand::Quit => {
-                self.state = ReplState::Quitting;
+                let proof = Proof::start(formula);
+                self.state = ReplState::Proving(proof);
+
                 Ok(())
             },
-            ReplCommand::Help => unimplemented!()
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::Axiom) => {
+                match p.apply(Rule::Axiom) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::Intro) => {
+                match p.apply(Rule::Intro) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::Trans(s)) => {
+                match p.apply(Rule::Trans(s)) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::Split) => {
+                match p.apply(Rule::SplitAnd) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::AndLeft(s)) => {
+                match p.apply(Rule::And(Side::Left, s)) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::AndRight(s)) => {
+                match p.apply(Rule::And(Side::Right, s)) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::KeepLeft) => {
+                match p.apply(Rule::Keep(Side::Left)) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::KeepRight) => {
+                match p.apply(Rule::Keep(Side::Right)) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::FromOr(s)) => {
+                match p.apply(Rule::Keep(Side::Right)) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            },
+
+
+            (ReplState::Proving(ref mut p), ReplCommand::Qed) => {
+                if p.is_finished() {
+                    self.state = ReplState::Idle;
+                    Ok(())
+                }
+                else {
+                    Err(ReplError::CommandError("Proof not finished".to_string()))
+                }
+            }
+
+
+            (_, ReplCommand::Quit) => {
+                self.state = ReplState::Quitting;
+                Ok(())
+            }
+
+
+            _ => Err(ReplError::UnknownCommand)
         }
     }
 }
