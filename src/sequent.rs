@@ -3,6 +3,7 @@ use std::fmt::Display;
 use crate::inductive::Formula;
 
 
+#[derive(Clone)]
 pub struct Sequent {
     pub antecedents: Vec<Box<Formula>>,
     pub consequent: Box<Formula>

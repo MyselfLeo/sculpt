@@ -1,6 +1,6 @@
 use std::io;
 use std::io::Write;
-use crossterm::{execute, QueueableCommand};
+use crossterm::execute;
 use crossterm::cursor::MoveTo;
 use crossterm::terminal;
 use crate::inductive::Formula;
@@ -8,8 +8,10 @@ use crate::proof::Proof;
 use crate::rule::{Rule, Side};
 
 
+#[derive(Clone)]
 pub enum ReplState {
     Idle,
+    Help(Box<ReplState>),
     Proving(Proof),
     Quitting
 }
@@ -44,6 +46,7 @@ pub enum ReplCommand {
     Qed,
 
     Quit,
+    Exit,
     Help
 }
 
@@ -90,7 +93,8 @@ impl ReplCommand {
 
             ("qed", "") => ReplCommand::Qed,
 
-            ("quit", _) | ("exit", _) => ReplCommand::Quit,
+            ("quit", _) => ReplCommand::Quit,
+            ("exit", _) => ReplCommand::Exit,
             ("help", "") => ReplCommand::Help,
 
             ("split", _) => return Err(ReplError::TooMuchArguments),
@@ -135,13 +139,39 @@ impl Repl {
 
 
     fn update(&mut self) -> io::Result<()> {
-        execute!(io::stdout(), MoveTo(0, 0), terminal::Clear(terminal::ClearType::FromCursorDown));
+        execute!(io::stdout(), MoveTo(0, 0), terminal::Clear(terminal::ClearType::FromCursorDown))?;
 
         match &self.state {
+
             ReplState::Idle => {
                 println!("deducnat - v0.1.0");
                 println!("type 'help' for command information, 'quit' to leave");
             }
+
+            ReplState::Help(_) => {
+                println!("deducnat - v0.1.0");
+                println!();
+
+                println!("MAIN COMMANDS");
+                println!("help                    -- Display this information screen");
+                println!("exit                    -- Close this information screen");
+                println!("quit                    -- Stop deducnat");
+                println!("proof <prop>            -- Start the proving process for prop");
+                println!();
+
+                println!("PROOF COMMANDS");
+                println!("axiom");
+                println!("intro");
+                println!("split");
+                println!("trans <prop>");
+                println!("and_left prop>");
+                println!("and_right <prop>");
+                println!("keep_left");
+                println!("keep_right");
+                println!("from_or <'or' prop>");
+                println!("qed                     -- Quit the proof only if finished");
+            }
+
 
             ReplState::Proving(p) => {
                 p.print();
@@ -151,7 +181,7 @@ impl Repl {
 
         // Command prompt
         let final_row = terminal::window_size()?.rows;
-        execute!(io::stdout(), MoveTo(0, final_row));
+        execute!(io::stdout(), MoveTo(0, final_row))?;
 
         print!("> ");
 
@@ -273,6 +303,18 @@ impl Repl {
 
             (_, ReplCommand::Quit) => {
                 self.state = ReplState::Quitting;
+                Ok(())
+            }
+
+
+            (_, ReplCommand::Help) => {
+                self.state = ReplState::Help(Box::new(self.state.clone()));
+                Ok(())
+            }
+
+            
+            (ReplState::Help(state), ReplCommand::Exit) => {
+                self.state = *state.to_owned();
                 Ok(())
             }
 

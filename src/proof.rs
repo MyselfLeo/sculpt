@@ -3,6 +3,8 @@ use crate::inductive::Formula;
 use crate::rule::Rule;
 use crate::sequent::Sequent;
 
+
+#[derive(Clone)]
 pub struct Proof {
     pub goal: Formula,
     current_goal: Option<Box<Sequent>>,
