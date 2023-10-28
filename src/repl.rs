@@ -50,7 +50,8 @@ pub enum ReplCommand {
 
     Quit,
     Exit,
-    Help
+    Help,
+    Return          // Command when enter is pressed with no further input
 }
 
 impl Display for ReplCommand {
@@ -70,7 +71,8 @@ impl Display for ReplCommand {
             ReplCommand::Quit => write!(f, "quit"),
             ReplCommand::Exit => write!(f, "exit"),
             ReplCommand::Help => write!(f, "help"),
-            ReplCommand::List => write!(f, "list")
+            ReplCommand::List => write!(f, "list"),
+            ReplCommand::Return => write!(f, "[return]")
         }
     }
 }
@@ -79,7 +81,6 @@ impl Display for ReplCommand {
 
 #[derive(Debug)]
 pub enum ReplError {
-    EmptyCommand,
     TooMuchArguments,
     UnknownCommand,
     InvalidCommand,
@@ -91,7 +92,7 @@ pub enum ReplError {
 impl ReplCommand {
     pub fn from(command: &str) -> Result<ReplCommand, ReplError> {
         let command = command.trim();
-        if command.is_empty() {return Err(ReplError::EmptyCommand);}
+        if command.is_empty() {return Ok(ReplCommand::Return);}
 
         let (cname, cparam) = match command.split_once(' ') {
             None => (command, ""),
@@ -123,6 +124,7 @@ impl ReplCommand {
             ("exit", _) => ReplCommand::Exit,
             ("help", _) => ReplCommand::Help,
             ("list", _) => ReplCommand::List,
+
 
             ("split", _) => return Err(ReplError::TooMuchArguments),
             ("keep_left", _) | ("keep_right", _) => return Err(ReplError::TooMuchArguments),
@@ -392,16 +394,22 @@ impl Repl {
             }
 
             
-            (ReplState::Help(state), ReplCommand::Exit) => {
+            (ReplState::Help(state), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = *state.to_owned();
                 Ok(())
             }
 
 
-            (ReplState::CommandList(p, l), ReplCommand::Exit) => {
+            (ReplState::CommandList(p, l), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = ReplState::Proving(p.clone(), l.clone());
                 Ok(())
             }
+
+
+
+            // Do nothing
+            (_, ReplCommand::Return) => Ok(()),
+
 
 
             _ => Err(ReplError::InvalidCommand)
