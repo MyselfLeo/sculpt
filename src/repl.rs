@@ -404,7 +404,7 @@ impl Repl {
             }
 
 
-            _ => Err(ReplError::UnknownCommand)
+            _ => Err(ReplError::InvalidCommand)
         }
     }
 }
