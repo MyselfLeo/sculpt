@@ -88,6 +88,19 @@ pub enum ReplError {
     UnableToRead
 }
 
+impl Display for ReplError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReplError::TooMuchArguments => write!(f, "too much arguments"),
+            ReplError::UnknownCommand => write!(f, "unknown command"),
+            ReplError::InvalidCommand => write!(f, "invalid command"),
+            ReplError::CommandError(e) => write!(f, "{e}"),
+            ReplError::UnableToRead => write!(f, "unable to read standard input"),
+        }
+    }
+}
+
+
 
 impl ReplCommand {
     pub fn from(command: &str) -> Result<ReplCommand, ReplError> {
@@ -141,12 +154,13 @@ impl ReplCommand {
 
 
 pub struct Repl {
-    pub state: ReplState
+    pub state: ReplState,
+    last_error: Option<ReplError>
 }
 
 impl Repl {
     pub fn new() -> Repl {
-        Repl { state: ReplState::Idle }
+        Repl { state: ReplState::Idle, last_error: None }
     }
 
     pub fn start(&mut self) -> io::Result<()> {
@@ -157,8 +171,13 @@ impl Repl {
             self.update()?;
 
             match self.get_command() {
-                Ok(c) => { self.execute(c).unwrap(); },
-                Err(_) => {}
+                Ok(c) => {
+                    match self.execute(c) {
+                        Ok(_) => self.last_error = None,
+                        Err(e) => self.last_error = Some(e),
+                    }
+                },
+                Err(e) => self.last_error = Some(e)
             }
         }
 
@@ -227,8 +246,15 @@ impl Repl {
             ReplState::Quitting => {}
         }
 
-        // Command prompt
+        // Error msg & command prompte
         let final_row = terminal::window_size()?.rows;
+
+        if let Some(e) = &self.last_error {
+            execute!(io::stdout(), MoveTo(0, final_row-1))?;
+            print!("Error: {e}");
+            io::stdout().flush()?;
+        }
+
         execute!(io::stdout(), MoveTo(0, final_row))?;
 
         print!("> ");
