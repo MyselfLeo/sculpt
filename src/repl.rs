@@ -206,7 +206,7 @@ impl Repl {
                 println!("proof <prop>            -- Start the proving process for prop");
                 println!();
 
-                println!("PROOF COMMANDS");
+                println!("PROOF COMMANDS (with G: current goal");
                 println!("qed                     -- Quit the proof only if finished");
                 println!("list                    -- Display the list of commands executed for this proof");
                 println!("");
@@ -214,12 +214,12 @@ impl Repl {
                 println!("axiom");
                 println!("intro");
                 println!("split");
-                println!("trans <prop>");
-                println!("and_left prop>");
-                println!("and_right <prop>");
+                println!("trans <P>");
+                println!("and_left <P>");
+                println!("and_right <P>");
                 println!("keep_left");
                 println!("keep_right");
-                println!("from_or <'or' prop>");
+                println!("from_or <P \\/ Q>");
             }
 
 
@@ -250,12 +250,11 @@ impl Repl {
         let final_row = terminal::window_size()?.rows;
 
         if let Some(e) = &self.last_error {
-            execute!(io::stdout(), MoveTo(0, final_row-1))?;
+            execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Error: {e}");
-            io::stdout().flush()?;
         }
 
-        execute!(io::stdout(), MoveTo(0, final_row))?;
+        execute!(io::stdout(), MoveTo(0, final_row-1))?;
 
         print!("> ");
 
