@@ -8,7 +8,7 @@ pub enum Associativity {
 }
 
 
-#[derive(Debug, Clone, Copy)]
+/*#[derive(Debug, Clone, Copy)]
 pub enum Keyword {
     Context
 }
@@ -19,7 +19,7 @@ impl Display for Keyword {
             Keyword::Context => write!(f, "Context"),
         }
     }
-}
+}*/
 
 #[derive(Debug, Clone, Copy)]
 pub enum Op {
@@ -91,7 +91,7 @@ impl Display for Op {
 
 #[derive(Debug, Clone)]
 pub enum Token {
-    Keyword(Keyword),
+    //Keyword(Keyword),
     Ident(String),
     Op(Op),
     OpenParenthesis,
@@ -109,21 +109,19 @@ enum LexerStates {
 
 
 macro_rules! op_push {
-    ($buf:ident, $res:ident, $state:ident) => {
+    ($buf:ident, $res:ident) => {
         match Op::from_str(&$buf.as_str()) {
             Some(op) => $res.push(Token::Op(op)),
             None => return Err(format!("Expected operator, got {} instead", $buf))
         }
         $buf.clear();
-        $state = LexerStates::Idle;
     };
 }
 
 macro_rules! ident_push {
-    ($buf:ident, $res:ident, $state:ident) => {
+    ($buf:ident, $res:ident) => {
         $res.push(Token::Ident($buf.clone()));
         $buf.clear();
-        $state = LexerStates::Idle;
     };
 }
 
@@ -133,8 +131,8 @@ macro_rules! buf_push {
         if !$buf.is_empty() {
             match $state {
                 LexerStates::Idle => {}
-                LexerStates::Op => { op_push!($buf, $res, $state); }
-                LexerStates::Ident => { ident_push!($buf, $res, $state); }
+                LexerStates::Op => { op_push!($buf, $res); }
+                LexerStates::Ident => { ident_push!($buf, $res); }
             }
         }
     };
@@ -156,8 +154,8 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
             if !buf.is_empty() {
                 match state {
                     LexerStates::Idle => return Err(format!("Token {buf} not expected")),
-                    LexerStates::Ident => { ident_push!(buf, res, state); },
-                    LexerStates::Op => { op_push!(buf, res, state); }
+                    LexerStates::Ident => { ident_push!(buf, res); },
+                    LexerStates::Op => { op_push!(buf, res); }
                 }
 
                 state = LexerStates::Idle;
@@ -169,7 +167,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
         // Start or continuation of ident
         if c.is_alphanumeric() {
             // end of op token, start of ident token
-            if state == LexerStates::Op { op_push!(buf, res, state); }
+            if state == LexerStates::Op { op_push!(buf, res); }
 
             state = LexerStates::Ident;
             buf.push(c);
@@ -178,6 +176,8 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
         // Parenthesis
         else if c == '(' || c == ')' {
             buf_push!(buf, res, state);
+            state = LexerStates::Idle;
+
             if c == '(' {res.push(Token::OpenParenthesis);}
             else {res.push(Token::CloseParenthesis);}
         }
@@ -185,7 +185,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
         // Operators
         else {
             // End of ident token, start of op token
-            if state == LexerStates::Ident { ident_push!(buf, res, state); }
+            if state == LexerStates::Ident { ident_push!(buf, res); }
 
             state = LexerStates::Op;
             buf.push(c);
@@ -210,7 +210,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
 
     for t in infix {
         match t {
-            Token::Keyword(_) => {postfix_output.push(t.clone())}
+            //Token::Keyword(_) => {postfix_output.push(t.clone())}
             Token::Ident(_) => { postfix_output.push(t.clone())}
 
             Token::Op(op) => {
@@ -292,7 +292,7 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
                 }
             },
 
-            Token::Keyword(kw) => { return Err(format!("Unexpected keyword '{kw}'")) },
+            //Token::Keyword(kw) => { return Err(format!("Unexpected keyword '{kw}'")) },
             Token::OpenParenthesis => { return Err("Unexpected '('".to_string()) },
             Token::CloseParenthesis => { return Err("Unexpected ')'".to_string()) },
         };

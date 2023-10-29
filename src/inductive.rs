@@ -2,11 +2,6 @@ use std::fmt::Display;
 
 use crate::parser;
 
-#[derive(PartialEq)]
-pub enum Associativity {
-    Left,
-    Right
-}
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum Formula {

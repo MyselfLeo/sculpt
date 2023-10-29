@@ -75,11 +75,6 @@ impl Proof {
     }
 
 
-    pub fn get_current_goal(&self) -> Option<Box<Sequent>> {
-        self.current_goal.clone()
-    }
-
-
     pub fn is_finished(&self) -> bool {
         self.current_goal.is_none()
     }
