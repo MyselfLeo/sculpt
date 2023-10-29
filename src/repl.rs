@@ -49,6 +49,7 @@ pub enum ReplCommand {
     FromOr(String),
     Qed,
     List,
+    Undo,
 
     Quit,
     Exit,
@@ -74,6 +75,7 @@ impl Display for ReplCommand {
             ReplCommand::Exit => write!(f, "exit"),
             ReplCommand::Help => write!(f, "help"),
             ReplCommand::List => write!(f, "list"),
+            ReplCommand::Undo => write!(f, "undo"),
             ReplCommand::Return => write!(f, "[return]")
         }
     }
@@ -137,6 +139,7 @@ impl ReplCommand {
 
             ("quit", _) => ReplCommand::Quit,
             ("exit", _) => ReplCommand::Exit,
+            ("undo", _) => ReplCommand::Undo,
             ("help", _) => ReplCommand::Help,
             ("list", _) => ReplCommand::List,
 
@@ -213,6 +216,7 @@ impl Repl {
                 println!("PROOF COMMANDS (P, Q: propositions)");
                 println!("qed                     -- Finish the proof (only when no more subgoals)");
                 println!("list                    -- Display the list of commands executed for this proof");
+                println!("undo                    -- Revert last operation");
                 println!("");
 
                 println!("axiom");
@@ -426,6 +430,22 @@ impl Repl {
             (ReplState::Proving(ref mut p, list), ReplCommand::List) => {
                 self.state = ReplState::StepList(p.clone(), list.clone());
                 Ok(())
+            }
+
+
+            (ReplState::Proving(ref mut p, list), ReplCommand::Undo) => {
+                let previous_state = p.borrow_mut().previous_state.clone();
+                
+                match previous_state {
+                    Some(ref ps) => {
+                        let mut command_list = list.clone();
+                        command_list.pop();
+
+                        self.state = ReplState::Proving(RefCell::new(*ps.clone()), command_list);
+                        Ok(())
+                    },
+                    None => Err(ReplError::CommandError("No previous operation".to_string())),
+                }
             }
 
 
