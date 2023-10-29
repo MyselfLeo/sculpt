@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fmt::Display;
 use std::io;
 use std::io::Write;
@@ -13,9 +14,9 @@ use crate::rule::{Rule, Side};
 pub enum ReplState {
     Idle,
     Help(Box<ReplState>),
-    Proving(Proof, Vec<ReplCommand>),
-    StepList(Proof, Vec<ReplCommand>),
-    Qed(Proof, Vec<ReplCommand>),
+    Proving(RefCell<Proof>, Vec<ReplCommand>),
+    StepList(RefCell<Proof>, Vec<ReplCommand>),
+    Qed(RefCell<Proof>, Vec<ReplCommand>),
     Quitting
 }
 
@@ -228,13 +229,13 @@ impl Repl {
 
 
             ReplState::Proving(p, _) => {
-                p.print();
+                p.borrow().print();
             }
 
 
 
             ReplState::Qed(p, steps) => {
-                println!("PROOF OF  {}", p.goal);
+                println!("PROOF OF  {}", p.borrow().goal);
                 println!();
                 println!("DEDUCTION STEPS:");
                 for s in steps {
@@ -245,10 +246,8 @@ impl Repl {
 
 
             ReplState::StepList(p, steps) => {
-                match p.get_current_goal() {
-                    None => println!("Goal: {} (finished)", p.goal),
-                    Some(_) => println!("Goal: {}", p.goal)
-                };
+                if p.borrow().is_finished() {println!("Goal: {} (finished)", p.borrow().goal)}
+                else {println!("Goal: {}", p.borrow().goal)}
 
                 println!();
 
@@ -301,25 +300,25 @@ impl Repl {
                 };
 
                 let proof = Proof::start(formula);
-                self.state = ReplState::Proving(proof, Vec::new());
+                self.state = ReplState::Proving(RefCell::new(proof), Vec::new());
 
                 Ok(())
             },
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::Axiom) => {
-                match p.apply(Rule::Axiom) {
+                match &p.borrow_mut().apply(Rule::Axiom) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
                     },
-                    Err(e) => Err(ReplError::CommandError(e))
+                    Err(e) => Err(ReplError::CommandError(e.clone()))
                 }
             },
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::Intro) => {
-                match p.apply(Rule::Intro) {
+                match p.borrow_mut().apply(Rule::Intro) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -330,7 +329,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::Trans(s)) => {
-                match p.apply(Rule::Trans(s.to_string())) {
+                match p.borrow_mut().apply(Rule::Trans(s.to_string())) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -341,7 +340,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::Split) => {
-                match p.apply(Rule::SplitAnd) {
+                match p.borrow_mut().apply(Rule::SplitAnd) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -352,7 +351,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::AndLeft(s)) => {
-                match p.apply(Rule::And(Side::Left, s.to_string())) {
+                match p.borrow_mut().apply(Rule::And(Side::Left, s.to_string())) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -363,7 +362,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::AndRight(s)) => {
-                match p.apply(Rule::And(Side::Right, s.to_string())) {
+                match p.borrow_mut().apply(Rule::And(Side::Right, s.to_string())) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -374,7 +373,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::KeepLeft) => {
-                match p.apply(Rule::Keep(Side::Left)) {
+                match p.borrow_mut().apply(Rule::Keep(Side::Left)) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -385,7 +384,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::KeepRight) => {
-                match p.apply(Rule::Keep(Side::Right)) {
+                match p.borrow_mut().apply(Rule::Keep(Side::Right)) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -396,7 +395,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::FromOr(s)) => {
-                match p.apply(Rule::FromOr(s.to_string())) {
+                match p.borrow_mut().apply(Rule::FromOr(s.to_string())) {
                     Ok(_) => {
                         cs.push(command.clone());
                         Ok(())
@@ -407,7 +406,7 @@ impl Repl {
 
 
             (ReplState::Proving(ref mut p, s), ReplCommand::Qed) => {
-                if p.is_finished() {
+                if p.borrow().is_finished() {
                     self.state = ReplState::Qed(p.clone(), s.clone());
                     Ok(())
                 }
