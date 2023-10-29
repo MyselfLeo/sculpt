@@ -14,7 +14,8 @@ pub enum ReplState {
     Idle,
     Help(Box<ReplState>),
     Proving(Proof, Vec<ReplCommand>),
-    CommandList(Proof, Vec<ReplCommand>),
+    StepList(Proof, Vec<ReplCommand>),
+    Qed(Proof, Vec<ReplCommand>),
     Quitting
 }
 
@@ -82,7 +83,7 @@ impl Display for ReplCommand {
 #[derive(Debug)]
 pub enum ReplError {
     TooMuchArguments,
-    UnknownCommand,
+    UnknownCommand(String),
     InvalidCommand,
     CommandError(String),
     UnableToRead
@@ -92,7 +93,7 @@ impl Display for ReplError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReplError::TooMuchArguments => write!(f, "too much arguments"),
-            ReplError::UnknownCommand => write!(f, "unknown command"),
+            ReplError::UnknownCommand(s) => write!(f, "unknown command '{s}'"),
             ReplError::InvalidCommand => write!(f, "invalid command"),
             ReplError::CommandError(e) => write!(f, "{e}"),
             ReplError::UnableToRead => write!(f, "unable to read standard input"),
@@ -144,7 +145,7 @@ impl ReplCommand {
             ("intro", _) => return Err(ReplError::TooMuchArguments),
             ("axiom", _) => return Err(ReplError::TooMuchArguments),
             ("qed", _) => return Err(ReplError::TooMuchArguments),
-            _ => return Err(ReplError::UnknownCommand)
+            (c, _) => return Err(ReplError::UnknownCommand(c.to_string()))
         };
 
         Ok(cmd)
@@ -192,7 +193,9 @@ impl Repl {
 
             ReplState::Idle => {
                 println!("deducnat - v0.1.0");
-                println!("type 'help' for command information, 'quit' to leave");
+                println!("type 'proof P' to start to prove P");
+                println!("     'help' for command information");
+                println!("     'quit' to leave");
             }
 
             ReplState::Help(_) => {
@@ -201,13 +204,13 @@ impl Repl {
 
                 println!("MAIN COMMANDS");
                 println!("help                    -- Display this information screen");
-                println!("exit                    -- Close sub-screens (like help or list)");
+                println!("exit                    -- Close sub-screens (help, list) or go back to main screen");
                 println!("quit                    -- Stop deducnat");
                 println!("proof <prop>            -- Start the proving process for prop");
                 println!();
 
-                println!("PROOF COMMANDS (with G: current goal");
-                println!("qed                     -- Quit the proof only if finished");
+                println!("PROOF COMMANDS (P, Q: propositions)");
+                println!("qed                     -- Finish the proof (only when no more subgoals)");
                 println!("list                    -- Display the list of commands executed for this proof");
                 println!("");
 
@@ -223,12 +226,25 @@ impl Repl {
             }
 
 
+
             ReplState::Proving(p, _) => {
                 p.print();
             }
 
 
-            ReplState::CommandList(p, commands) => {
+
+            ReplState::Qed(p, steps) => {
+                println!("PROOF OF  {}", p.goal);
+                println!();
+                println!("DEDUCTION STEPS:");
+                for s in steps {
+                    println!("{s}");
+                }
+            }
+
+
+
+            ReplState::StepList(p, steps) => {
                 match p.get_current_goal() {
                     None => println!("Goal: {} (finished)", p.goal),
                     Some(_) => println!("Goal: {}", p.goal)
@@ -237,8 +253,8 @@ impl Repl {
                 println!();
 
                 println!("COMMANDS");
-                for c in commands {
-                    println!("{c}");
+                for s in steps {
+                    println!("{s}");
                 }
             }
 
@@ -390,9 +406,9 @@ impl Repl {
             },
 
 
-            (ReplState::Proving(ref mut p, _), ReplCommand::Qed) => {
+            (ReplState::Proving(ref mut p, s), ReplCommand::Qed) => {
                 if p.is_finished() {
-                    self.state = ReplState::Idle;
+                    self.state = ReplState::Qed(p.clone(), s.clone());
                     Ok(())
                 }
                 else {
@@ -401,8 +417,14 @@ impl Repl {
             }
 
 
+            (ReplState::Qed(_, _) | ReplState::Proving(_, _), ReplCommand::Exit) => {
+                self.state = ReplState::Idle;
+                Ok(())
+            }
+
+
             (ReplState::Proving(ref mut p, list), ReplCommand::List) => {
-                self.state = ReplState::CommandList(p.clone(), list.clone());
+                self.state = ReplState::StepList(p.clone(), list.clone());
                 Ok(())
             }
 
@@ -425,7 +447,7 @@ impl Repl {
             }
 
 
-            (ReplState::CommandList(p, l), ReplCommand::Exit | ReplCommand::Return) => {
+            (ReplState::StepList(p, l), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = ReplState::Proving(p.clone(), l.clone());
                 Ok(())
             }

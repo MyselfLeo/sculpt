@@ -9,7 +9,7 @@ pub struct Proof {
     pub goal: Formula,
     current_goal: Option<Box<Sequent>>,
     sub_goals: VecDeque<Box<Sequent>>,
-    step: u16
+    pub step: u16
 }
 
 
@@ -25,10 +25,6 @@ impl Proof {
         }
     }
 
-
-    pub fn get_subgoals(&self) -> &VecDeque<Box<Sequent>> {
-        &self.sub_goals
-    }
 
 
     pub fn apply(&mut self, rule: Rule) -> Result<(), String> {
@@ -54,20 +50,27 @@ impl Proof {
 
 
     pub fn print(&self) {
+        // sub goals + current goal (1)
+        if self.is_finished() {
+            println!("Goal: {} (finished)", self.goal);
+            return;
+        }
+
+        println!("Goal: {}", self.goal);
+
+        match self.sub_goals.len() + 1 {
+            1 => println!("Step {}  (1 sub-goal remaining)", self.step),
+            x => println!("Step {}  ({} sub-goals remaining)", self.step, x)
+        };
+
+        println!("│");
+        
         match &self.current_goal {
-            None => println!("Goal: {} (finished)", self.goal),
-            Some(cg) => {
-                // sub goals + current goal (1)
-                println!("Goal: {}", self.goal);
-
-                match self.sub_goals.len() + 1 {
-                    1 => println!("Step {}  (1 sub-goal remaining)", self.step),
-                    x => println!("Step {}  ({} sub-goals remaining)", self.step, x)
-                };
-
-                println!("│");
-                println!("{}", cg);
-            }
+            Some(cg) => println!("{}", cg),
+            None => {
+                println!("│──────────────────────────");
+                println!("│ (no more goals)")
+            },
         }
     }
 

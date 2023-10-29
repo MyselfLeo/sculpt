@@ -15,15 +15,6 @@ impl Sequent {
     pub fn new(antecedents: Vec<Box<Formula>>, consequent: Box<Formula>) -> Sequent {
         Sequent { antecedents, consequent: consequent.clone() }
     }
-
-    /// Returns a sequent with no antecedents
-    pub fn from(formula: Box<Formula>) -> Sequent {
-        Sequent::new(vec![], formula)
-    }
-
-    pub fn add_antecedent(&mut self, antecedent: Box<Formula>) {
-        self.antecedents.push(antecedent);
-    }
 }
 
 impl Display for Sequent {
