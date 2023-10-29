@@ -405,9 +405,10 @@ impl Repl {
             },
 
 
-            (ReplState::Proving(ref mut p, s), ReplCommand::Qed) => {
+            (ReplState::Proving(ref mut p, cs), ReplCommand::Qed) => {
                 if p.borrow().is_finished() {
-                    self.state = ReplState::Qed(p.clone(), s.clone());
+                    cs.push(command.clone());
+                    self.state = ReplState::Qed(p.clone(), cs.clone());
                     Ok(())
                 }
                 else {
@@ -416,7 +417,7 @@ impl Repl {
             }
 
 
-            (ReplState::Qed(_, _) | ReplState::Proving(_, _), ReplCommand::Exit) => {
+            (ReplState::Qed(_, _) | ReplState::Proving(_, _), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = ReplState::Idle;
                 Ok(())
             }
