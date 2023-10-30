@@ -5,6 +5,7 @@ use crate::parser;
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum Formula {
+    Bottom,
     Variable(String),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
@@ -21,6 +22,7 @@ impl Formula {
 
     pub fn get_precedence(&self) -> u8 {
         match self {
+            Formula::Bottom => 4,
             Formula::Variable(_) => 4,
             Formula::Not(_) => 3,
             Formula::And(_, _) | Formula::Or(_, _) => 2,
@@ -30,6 +32,7 @@ impl Formula {
 
     pub fn get_op_symbol(&self) -> &'static str {
         match self {
+            Formula::Bottom => "",
             Formula::Variable(_) => "",
             Formula::Not(_) => "~",
             Formula::Or(_, _) => "\\/",
@@ -71,6 +74,8 @@ macro_rules! display_binary_right {
 impl Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Formula::Bottom => write!(f, "⊥"),
+
             Formula::Variable(v) => write!(f, "{}", v),
 
             Formula::Not(formula) => match formula.as_ref() {

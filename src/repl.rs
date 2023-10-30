@@ -47,6 +47,8 @@ pub enum ReplCommand {
     KeepLeft,
     KeepRight,
     FromOr(String),
+    FromBottom,
+    ExFalso(String),
     Qed,
     List,
     Undo,
@@ -70,6 +72,8 @@ impl Display for ReplCommand {
             ReplCommand::KeepLeft => write!(f, "keep_left"),
             ReplCommand::KeepRight => write!(f, "keep_right"),
             ReplCommand::FromOr(s) => write!(f, "from_or {s}"),
+            ReplCommand::FromBottom => write!(f, "from_bottom"),
+            ReplCommand::ExFalso(s) => write!(f, "exfalso {s}"),
             ReplCommand::Qed => write!(f, "qed"),
             ReplCommand::Quit => write!(f, "quit"),
             ReplCommand::Exit => write!(f, "exit"),
@@ -133,6 +137,9 @@ impl ReplCommand {
             ("keep_right", "") => ReplCommand::KeepRight,
 
             ("from_or", s) => ReplCommand::FromOr(s.to_string()),
+
+            ("from_bottom", "") => ReplCommand::FromBottom,
+            ("exfalso", s) => ReplCommand::ExFalso(s.to_string()),
 
 
             ("qed", "") => ReplCommand::Qed,
@@ -217,7 +224,7 @@ impl Repl {
                 println!("qed                     -- Finish the proof (only when no more subgoals)");
                 println!("list                    -- Display the list of commands executed for this proof");
                 println!("undo                    -- Revert last operation");
-                println!("");
+                println!();
 
                 println!("axiom");
                 println!("intro");
@@ -228,6 +235,8 @@ impl Repl {
                 println!("keep_left");
                 println!("keep_right");
                 println!("from_or <P \\/ Q>");
+                println!("from_bottom");
+                println!("exfalso <P>");
             }
 
 
@@ -407,6 +416,28 @@ impl Repl {
                     Err(e) => Err(ReplError::CommandError(e))
                 }
             },
+
+
+            (ReplState::Proving(ref mut p, cs), ReplCommand::FromBottom) => {
+                match p.borrow_mut().apply(Rule::FromBottom) {
+                    Ok(_) => {
+                        cs.push(command.clone());
+                        Ok(())
+                    },
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            }
+
+
+            (ReplState::Proving(ref mut p, cs), ReplCommand::ExFalso(s)) => {
+                match p.borrow_mut().apply(Rule::ExFalso(s.to_string())) {
+                    Ok(_) => {
+                        cs.push(command.clone());
+                        Ok(())
+                    },
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
+            }
 
 
             (ReplState::Proving(ref mut p, cs), ReplCommand::Qed) => {
