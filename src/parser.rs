@@ -93,6 +93,7 @@ impl Display for Op {
 pub enum Token {
     //Keyword(Keyword),
     Ident(String),
+    Bottom,
     Op(Op),
     OpenParenthesis,
     CloseParenthesis,
@@ -182,6 +183,13 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
             else {res.push(Token::CloseParenthesis);}
         }
 
+        // Bottom symbol
+        else if c == '⊥' {
+            buf_push!(buf, res, state);
+            state = LexerStates::Idle;
+            res.push(Token::Bottom);
+        }
+
         // Operators
         else {
             // End of ident token, start of op token
@@ -211,7 +219,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
     for t in infix {
         match t {
             //Token::Keyword(_) => {postfix_output.push(t.clone())}
-            Token::Ident(_) => { postfix_output.push(t.clone())}
+            Token::Ident(_) | Token::Bottom => { postfix_output.push(t.clone())}
 
             Token::Op(op) => {
                 match (op.get_arity(), op.get_associativity()) {
@@ -277,6 +285,7 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
     for token in postfix {
         let formula = match token {
             Token::Ident(id) => Formula::Variable(id.clone()),
+            Token::Bottom => Formula::Bottom,
             Token::Op(op) => match op {
                 Op::Not => Formula::Not(formula_stack.pop().unwrap()),
                 Op::Or | Op::And | Op::Implies => {
