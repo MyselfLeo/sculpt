@@ -3,6 +3,9 @@ use std::fmt::Display;
 use crate::parser;
 
 
+
+
+
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum Formula {
     Bottom,

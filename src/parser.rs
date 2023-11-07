@@ -8,19 +8,6 @@ pub enum Associativity {
 }
 
 
-/*#[derive(Debug, Clone, Copy)]
-pub enum Keyword {
-    Context
-}
-
-impl Display for Keyword {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Keyword::Context => write!(f, "Context"),
-        }
-    }
-}*/
-
 #[derive(Debug, Clone, Copy)]
 pub enum Op {
     Not,
