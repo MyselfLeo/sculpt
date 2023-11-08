@@ -1,4 +1,6 @@
 use std::fmt::Display;
+use itertools::Itertools;
+use itertools::Itertools::tuple_windows;
 
 use crate::inductive::Formula;
 
@@ -239,20 +241,42 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
 /// Convert infix tokens to postfix tokens based on the
 /// parenthesis, the operators precedence and the associativity of operators.
 /// The parenthesis will get removed.
+///
+/// See https://www.chris-j.co.uk/parsing.php for more information about the algorithm used
 pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
-
     let mut postfix_output: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
-    for t in infix {
-        match t {
-            //Token::Keyword(_) => {postfix_output.push(t.clone())}
-            //Token::Ident(_) | Token::Bottom => { postfix_output.push(t.clone())}
+    // Manages special case of quantifier, which are similar to binary prefix operators
+    let mut prefix_counter = 0;
 
-            Token::Op(op) => {
+    // Need to iter 2 by 2 because an ident before a parenthesis is a function/relation ident
+    for (token, next) in infix.iter().tuple_windows() {
+        match (token, next) {
+
+            // function/relation ident
+            (Token::Ident(_), Token::OpenParenthesis) => stack.push(token.clone()),
+
+            // Other ident
+            (Token::Ident(_), _) => stack.push(token.clone()),
+
+            // function argument separator
+            (Token::Comma, _) => if prefix_counter == 0 {
+                while let Some(Token::OpenParenthesis) = stack.last() {
+                    postfix_output.push(stack.pop().ok_or(Err("Internal error".to_string()))?);
+                }
+            }
+
+
+            (Token::Op(Op::Forall), _) | (Token::Op(Op::Exists), _) => {
+                prefix_counter += 2;
+                postfix_output.
+            }
+
+            (Token::Op(op), _) => {
                 match (op.get_arity(), op.get_associativity()) {
-                    (1, Associativity::Left) => postfix_output.push(t.clone()),
-                    (1, Associativity::Right) => stack.push(t.clone()),
+                    (1, Associativity::Left) => postfix_output.push(token.clone()),
+                    (1, Associativity::Right) => stack.push(token.clone()),
 
                     (2, Associativity::Left) => {
                         while let Some(Token::Op(othr)) = stack.last() {
@@ -262,7 +286,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
                             else {break;}
                         }
 
-                        stack.push(t.clone())
+                        stack.push(token.clone())
                     },
 
                     (2, Associativity::Right) => {
@@ -273,7 +297,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
                             else {break;}
                         }
 
-                        stack.push(t.clone())
+                        stack.push(token.clone())
                     },
 
                     _ => return Err(format!("Unsupported operator {}", op))
@@ -281,18 +305,23 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
             }
 
 
-            Token::OpenParenthesis => {stack.push(t.clone())}
+            (Token::OpenParenthesis, _) => {stack.push(token.clone())}
 
-            Token::CloseParenthesis => {
+            (Token::CloseParenthesis, _) => {
                 while let Some(&Token::Op(_)) = stack.last() {
                     postfix_output.push(stack.pop().unwrap())
                 }
                  if let Some(Token::OpenParenthesis) = stack.pop() { /* expected */ }
                  else { return Err("Invalid expression".to_string()) }
-            },
 
-            _ => todo!()
+                // function / relation token to be pushed
+                if let Some(Token::Ident(s)) = stack.last() {
+                    postfix_output.push(stack.pop().unwrap())
+                }
+            },
         }
+
+        if prefix_counter > 0 {prefix_counter -= 1;}
     }
 
     while let Some(t) = stack.pop() {

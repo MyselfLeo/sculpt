@@ -17,6 +17,12 @@ fn start_repl() {
 
 fn main() {
     let formula = "(forall x, H(x) => M(x)) => (H(Socrate)) => M(Socrate)";
-    println!("{:#?}", parser::lex(formula));
+    let tokens = parser::lex(formula).unwrap();
+    println!("{:?}", tokens);
+
+    println!("\n\n");
+
+    let postfix = parser::infix_to_postfix(&tokens).unwrap();
+    println!("{:?}", tokens);
 
 }
