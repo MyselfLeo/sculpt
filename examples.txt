@@ -5,3 +5,10 @@ Autres:
 (A \/ B => C) => ((A => B) /\ (B => C))
 ((A => B) /\ (B => C)) => (A \/ B => C)
 (A \/ B) => ((A => B) => B)
+
+
+
+
+
+forall x, H(x) => M(x)
+H(Socrate)

@@ -1,19 +1,60 @@
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 
-use crate::parser;
+use crate::{parser, tools};
 
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Term {
+    Variable(String),
+    Function(String, Vec<Box<Term>>)
+}
+
+
+impl Display for Term {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Term::Variable(v) => write!(f, "{v}"),
+            Term::Function(f, t) => {
+                if t.len() == 0 {
+                    write!(f, "{v}")
+                }
+                else {
+                    write!(f, "{v}({})", tools::list_str(t, ", "))
+                }
+            }
+        }
+    }
+}
+
+
+impl Term {
+    /// Return a list of each variable in the domain
+    /// of this Term.
+    pub fn domain(&self) -> Vec<String> {
+        match self {
+            Term::Variable(x) => vec![x.clone()],
+            Term::Function(_, terms) => {
+                terms.iter()
+                    .map(|t| t.domain())
+                    .flatten()
+                    .collect()
+            }
+        }
+    }
+}
 
 
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Formula {
-    Bottom,
-    Variable(String),
+    //Bottom,
+    Relation(String, Vec<Box<Term>>),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
     And(Box<Formula>, Box<Formula>),
     Implies(Box<Formula>, Box<Formula>),
+    Forall(String, Box<Formula>),
+    Exists(String, Box<Formula>)
 }
 
 impl Formula {
@@ -25,22 +66,25 @@ impl Formula {
 
     pub fn get_precedence(&self) -> u8 {
         match self {
-            Formula::Bottom => 4,
-            Formula::Variable(_) => 4,
-            Formula::Not(_) => 3,
-            Formula::And(_, _) | Formula::Or(_, _) => 2,
-            Formula::Implies(_, _) => 1
+            //Formula::Bottom => 4,
+            Formula::Relation(_, _) => 5,
+            Formula::Not(_) => 4,
+            Formula::And(_, _) | Formula::Or(_, _) => 3,
+            Formula::Implies(_, _) => 2,
+            Formula::Forall(_, _) | Formula::Exists(_, _) => 1
         }
     }
 
     pub fn get_op_symbol(&self) -> &'static str {
         match self {
-            Formula::Bottom => "",
-            Formula::Variable(_) => "",
+            //Formula::Bottom => "",
+            Formula::Relation(_, _) => "",
             Formula::Not(_) => "~",
             Formula::Or(_, _) => "\\/",
             Formula::And(_, _) => "/\\",
-            Formula::Implies(_, _) => "=>"
+            Formula::Implies(_, _) => "=>",
+            Formula::Forall(_, _) => "forall",
+            Formula::Exists(_, _) => "exists"
         }
     }
 }
@@ -75,20 +119,32 @@ macro_rules! display_binary_right {
 
 
 impl Display for Formula {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Formula::Bottom => write!(f, "⊥"),
+            //Formula::Bottom => write!(f, "⊥"),
 
-            Formula::Variable(v) => write!(f, "{}", v),
+            Formula::Relation(v, t) => match t {
+                vec![] => write!(f, "{v}"),
+                _ => write!(f, "{v}({})", tools::list_str(t, ", "))
+            },
 
             Formula::Not(formula) => match formula.as_ref() {
-                Formula::Variable(v) => write!(f, "~{}", v),
+                Formula::Relation(v, t) => {
+                    if v.len() == 0 {
+                        write!(f, "~{}", v)
+                    }
+                    else {
+                        write!(f, "~({}({}))", v, tools::list_str(t, ", "))
+                    }
+                },
                 other => write!(f, "~({})", *other)
             },
 
             Formula::Or(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
             Formula::And(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
-            Formula::Implies(lhs, rhs) => display_binary_right!(self, lhs, rhs, f)
+            Formula::Implies(lhs, rhs) => display_binary_right!(self, lhs, rhs, f),
+            Formula::Forall(v, f) => write!(f, "forall {v}, {f}"),
+            Formula::Exists(v, f) => write!(f, "exists {v}, {f}")
         }
     }
 }

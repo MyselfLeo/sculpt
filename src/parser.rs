@@ -13,7 +13,9 @@ pub enum Op {
     Not,
     Or,
     And,
-    Implies
+    Implies,
+    Forall,
+    Exists
 }
 
 impl Op {
@@ -23,6 +25,8 @@ impl Op {
             "\\/" => Some(Op::Or),
             "/\\" => Some(Op::And),
             "=>" => Some(Op::Implies),
+            "forall" => Some(Op::Forall),
+            "exists" => Some(Op::Exists),
             _ => None
         }
     }
@@ -32,10 +36,10 @@ impl Op {
     /// (higher precedence = applied before)
     pub fn get_precedence(&self) -> u8 {
         match self {
-            Op::Not => 3,
-            Op::Or => 2,
-            Op::And => 2,
-            Op::Implies => 1
+            Op::Not => 4,
+            Op::Or | Op::And => 3,
+            Op::Implies => 2,
+            Op::Forall | Op::Exists => 1
         }
     }
 
@@ -45,6 +49,7 @@ impl Op {
     /// Left means its a postfix operator while Right means its a prefix operator.
     pub fn get_associativity(&self) -> Associativity {
         match self {
+            Op::Forall | Op::Exists => Associativity::Right,
             Op::Not => Associativity::Right,
             Op::Or => Associativity::Left,
             Op::And => Associativity::Left,
@@ -56,6 +61,7 @@ impl Op {
     /// Return the arity of the operator, i.e. its number of operands
     pub fn get_arity(&self) -> u8 {
         match self {
+            Op::Exists | Op::Forall => 1,
             Op::Not => 1,
             Op::Or => 2,
             Op::And => 2,
@@ -67,6 +73,8 @@ impl Op {
 impl Display for Op {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Op::Forall => write!(f, "forall"),
+            Op::Exists => write!(f, "exists"),
             Op::Not => write!(f, "~"),
             Op::Or => write!(f, "\\/"),
             Op::And => write!(f, "/\\"),
@@ -80,7 +88,7 @@ impl Display for Op {
 pub enum Token {
     //Keyword(Keyword),
     Ident(String),
-    Bottom,
+    //Bottom,
     Op(Op),
     OpenParenthesis,
     CloseParenthesis,
@@ -271,8 +279,8 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
 
     for token in postfix {
         let formula = match token {
-            Token::Ident(id) => Formula::Variable(id.clone()),
-            Token::Bottom => Formula::Bottom,
+            Token::Ident(id) => Formula::Relation(id.clone()),
+            //Token::Bottom => Formula::Bottom,
             Token::Op(op) => match op {
                 Op::Not => Formula::Not(formula_stack.pop().unwrap()),
                 Op::Or | Op::And | Op::Implies => {
