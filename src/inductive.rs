@@ -6,7 +6,7 @@ use crate::parser;
 
 
 
-#[derive(Debug, Clone, PartialOrd, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Formula {
     Bottom,
     Variable(String),
