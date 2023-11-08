@@ -19,6 +19,19 @@ pub enum Op {
 }
 
 impl Op {
+    pub fn is_op(s: &str) -> bool {
+        match s {
+            "~" => true,
+            "\\/" => true,
+            "/\\" => true,
+            "=>" => true,
+            "forall" => true,
+            "exists" => true,
+            _ => false
+        }
+    }
+
+
     pub fn from_str(op: &str) -> Option<Op> {
         match op {
             "~" => Some(Op::Not),
@@ -92,14 +105,15 @@ pub enum Token {
     Op(Op),
     OpenParenthesis,
     CloseParenthesis,
+    Comma
 }
 
 
 #[derive(PartialEq, Debug)]
 enum LexerStates {
     Idle,
-    Op,
-    Ident
+    Alphanumeric,
+    SpecialChars
 }
 
 
@@ -127,8 +141,15 @@ macro_rules! buf_push {
         if !$buf.is_empty() {
             match $state {
                 LexerStates::Idle => {}
-                LexerStates::Op => { op_push!($buf, $res); }
-                LexerStates::Ident => { ident_push!($buf, $res); }
+                LexerStates::Alphanumeric => {
+                    if Op::is_op($buf.as_str()) {
+                        op_push!($buf, $res);
+                    }
+                    else {
+                        ident_push!($buf, $res);
+                    }
+                }
+                LexerStates::SpecialChars => { op_push!($buf, $res); }
             }
         }
     };
@@ -144,14 +165,17 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
     // Idents contain only letters & numbers,
     // while operators don't contain any.
 
+    let token_end_condition = |c: char| {
+        c.is_ascii_whitespace()
+    };
+
     for c in src.chars() {
         // End of token, empty buffer
-        if c.is_ascii_whitespace() {
+        if token_end_condition(c) {
             if !buf.is_empty() {
                 match state {
                     LexerStates::Idle => return Err(format!("Token {buf} not expected")),
-                    LexerStates::Ident => { ident_push!(buf, res); },
-                    LexerStates::Op => { op_push!(buf, res); }
+                    _ => { buf_push!(buf, res, state); },
                 }
 
                 state = LexerStates::Idle;
@@ -160,12 +184,21 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
             continue;
         }
 
-        // Start or continuation of ident
-        if c.is_alphanumeric() {
-            // end of op token, start of ident token
-            if state == LexerStates::Op { op_push!(buf, res); }
+        // End of current token, separation
+        if c == ',' {
+            buf_push!(buf, res, state);
+            res.push(Token::Comma);
+            state = LexerStates::Idle;
 
-            state = LexerStates::Ident;
+            continue;
+        }
+
+        // Start or continuation of ident or alphanumeric operator (exists, forall)
+        if c.is_alphanumeric() {
+            // end of op token, start of alphanumeric token
+            if state == LexerStates::SpecialChars { op_push!(buf, res); }
+
+            state = LexerStates::Alphanumeric;
             buf.push(c);
         }
 
@@ -179,18 +212,18 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
         }
 
         // Bottom symbol
-        else if c == '⊥' {
+        /*else if c == '⊥' {
             buf_push!(buf, res, state);
             state = LexerStates::Idle;
             res.push(Token::Bottom);
-        }
+        }*/
 
-        // Operators
+        // Special chars op
         else {
             // End of ident token, start of op token
-            if state == LexerStates::Ident { ident_push!(buf, res); }
+            if state == LexerStates::Alphanumeric { buf_push!(buf, res, state); }
 
-            state = LexerStates::Op;
+            state = LexerStates::SpecialChars;
             buf.push(c);
         }
     };
@@ -214,7 +247,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
     for t in infix {
         match t {
             //Token::Keyword(_) => {postfix_output.push(t.clone())}
-            Token::Ident(_) | Token::Bottom => { postfix_output.push(t.clone())}
+            //Token::Ident(_) | Token::Bottom => { postfix_output.push(t.clone())}
 
             Token::Op(op) => {
                 match (op.get_arity(), op.get_associativity()) {
@@ -256,7 +289,9 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
                 }
                  if let Some(Token::OpenParenthesis) = stack.pop() { /* expected */ }
                  else { return Err("Invalid expression".to_string()) }
-            }
+            },
+
+            _ => todo!()
         }
     }
 
@@ -279,11 +314,12 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
 
     for token in postfix {
         let formula = match token {
-            Token::Ident(id) => Formula::Relation(id.clone()),
+            //Token::Ident(id) => Formula::Relation(id.clone()),
+            Token::Ident(id) => todo!(),
             //Token::Bottom => Formula::Bottom,
             Token::Op(op) => match op {
                 Op::Not => Formula::Not(formula_stack.pop().unwrap()),
-                Op::Or | Op::And | Op::Implies => {
+                Op::Or | Op::And | Op::Implies | Op::Forall | Op::Exists => {
                     let rhs = formula_stack.pop().unwrap();
                     let lhs = formula_stack.pop().unwrap();
 
@@ -291,7 +327,9 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
                         Op::Not => unreachable!(),
                         Op::Or => Formula::Or(lhs, rhs),
                         Op::And => Formula::And(lhs, rhs),
-                        Op::Implies => Formula::Implies(lhs, rhs)
+                        Op::Implies => Formula::Implies(lhs, rhs),
+                        Op::Forall => todo!(),
+                        Op::Exists => todo!(),
                     }
                 }
             },
@@ -299,6 +337,7 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
             //Token::Keyword(kw) => { return Err(format!("Unexpected keyword '{kw}'")) },
             Token::OpenParenthesis => { return Err("Unexpected '('".to_string()) },
             Token::CloseParenthesis => { return Err("Unexpected ')'".to_string()) },
+            Token::Comma => { return Err("Unexpected ','".to_string()) }
         };
 
         formula_stack.push(Box::new(formula));

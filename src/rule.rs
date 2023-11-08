@@ -175,7 +175,8 @@ impl Rule {
 
 
             Rule::FromBottom => {
-                // invert current formula
+                unimplemented!()
+                /*// invert current formula
                 let new_prop = match sequent.consequent.as_ref() {
                     Formula::Not(e) => e.clone(),
                     e => Box::new(Formula::Not(Box::new(e.clone())))
@@ -188,14 +189,15 @@ impl Rule {
                     Sequent::new(with_prop, Box::new(Formula::Bottom))
                 ];
 
-                Ok(new_seq)
+                Ok(new_seq)*/
             }
 
 
 
             Rule::ExFalso(prop) => {
+                unimplemented!()
                 // ExFalso only works if current consequent is Bottom (i.e false)
-                match sequent.consequent.as_ref() {
+               /* match sequent.consequent.as_ref() {
                     Formula::Bottom => {},
                     _ => return Err(())
                 };
@@ -216,7 +218,7 @@ impl Rule {
                     Sequent::new(sequent.antecedents.clone(), false_prop)
                 ];
 
-                Ok(new_seq)
+                Ok(new_seq)*/
             }
         }
     }

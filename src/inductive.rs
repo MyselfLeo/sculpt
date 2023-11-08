@@ -14,7 +14,7 @@ impl Display for Term {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Term::Variable(v) => write!(f, "{v}"),
-            Term::Function(f, t) => {
+            Term::Function(v, t) => {
                 if t.len() == 0 {
                     write!(f, "{v}")
                 }
@@ -123,10 +123,14 @@ impl Display for Formula {
         match self {
             //Formula::Bottom => write!(f, "⊥"),
 
-            Formula::Relation(v, t) => match t {
-                vec![] => write!(f, "{v}"),
-                _ => write!(f, "{v}({})", tools::list_str(t, ", "))
-            },
+            Formula::Relation(v, t) => {
+                if t.len() == 0 {
+                    write!(f, "{v}")
+                }
+                else {
+                    write!(f, "{v}({})", tools::list_str(t, ", "))
+                }
+            }
 
             Formula::Not(formula) => match formula.as_ref() {
                 Formula::Relation(v, t) => {
@@ -143,8 +147,8 @@ impl Display for Formula {
             Formula::Or(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
             Formula::And(lhs, rhs) => display_binary_left!(self, lhs, rhs, f),
             Formula::Implies(lhs, rhs) => display_binary_right!(self, lhs, rhs, f),
-            Formula::Forall(v, f) => write!(f, "forall {v}, {f}"),
-            Formula::Exists(v, f) => write!(f, "exists {v}, {f}")
+            Formula::Forall(v, p) => write!(f, "forall {v}, {p}"),
+            Formula::Exists(v, p) => write!(f, "exists {v}, {p}")
         }
     }
 }

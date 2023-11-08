@@ -8,13 +8,11 @@ use std::fmt::Display;
 /// let s = list_str(v, ", "); // => "1, 2, 3"
 /// ```
 pub fn list_str<E: Display>(vec: &Vec<E>, sep: &str) -> String {
-    let mut iter = vec.iter().peekable();
+    let n = vec.len();
     let mut res = String::new();
-    for e in iter {
+    for (i, e) in vec.iter().enumerate() {
         res.push_str(&format!("{e}"));
-        if iter.peek().is_some() {
-            res.push_str(sep);
-        }
+        if i < n - 1 { res.push_str(sep); }
     }
     res
 }
