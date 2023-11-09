@@ -18,11 +18,22 @@ fn start_repl() {
 fn main() {
     let formula = "(forall x, H(x) => M(x)) => (H(Socrate)) => M(Socrate)";
     let tokens = parser::lex(formula).unwrap();
-    println!("{:?}", tokens);
+    let token_str = tokens
+        .iter()
+        .map(|t| format!("{} ", t.to_string()))
+        .collect::<String>();
 
-    println!("\n\n");
+    println!("{formula}");
+    println!("\n");
+
+    println!("{token_str}");
+    println!("\n");
 
     let postfix = parser::infix_to_postfix(&tokens).unwrap();
-    println!("{:?}", postfix);
+    let postfix_str = postfix
+        .iter()
+        .map(|t| format!("{} ", t.to_string()))
+        .collect::<String>();
+    println!("{postfix_str}");
 
 }

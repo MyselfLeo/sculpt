@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use itertools::Itertools;
 
 use crate::inductive::Formula;
@@ -107,6 +107,18 @@ pub enum Token {
     OpenParenthesis,
     CloseParenthesis,
     Comma
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Ident(s) => write!(f, "{s}"),
+            Token::Op(op) => write!(f, "{op}"),
+            Token::OpenParenthesis => write!(f, "("),
+            Token::CloseParenthesis => write!(f, ")"),
+            Token::Comma => write!(f, ",")
+        }
+    }
 }
 
 
@@ -263,9 +275,12 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
 
             // function argument separator
             (Token::Comma, _) => if prefix_counter == 0 {
-                while let Some(Token::OpenParenthesis) = stack.last() {
-                    let op = stack.pop().ok_or("Internal error".to_string());
-                    postfix_output.push(op?);
+                while let Some(t) = stack.last() {
+                    if let Token::OpenParenthesis = t {break;}
+                    else {
+                        let el = stack.pop().ok_or("Invalid formula".to_string())?;
+                        postfix_output.push(el);
+                    }
                 }
             }
 
@@ -312,6 +327,7 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
             (Token::CloseParenthesis, _) => {
                 while let Some(t) = stack.last() {
                     if let Token::OpenParenthesis = t {
+                        stack.pop().unwrap();
                         break;
                     }
                     postfix_output.push(stack.pop().unwrap())
