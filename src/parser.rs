@@ -249,11 +249,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
 }
 
 
-/// Convert infix tokens to postfix tokens based on the
-/// parenthesis, the operators precedence and the associativity of operators.
-/// The parenthesis will get removed.
-///
-/// There is a special case for quantifiers, which stay in their original order
+/// Convert infix operators to postfix in the token list.
 ///
 /// See https://www.chris-j.co.uk/parsing.php for more information about the algorithm used
 pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
@@ -267,11 +263,14 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
     for (token, next) in infix.iter().tuple_windows() {
         match (token, next) {
 
-            // function/relation ident
-            (Token::Ident(_), Token::OpenParenthesis) => stack.push(token.clone()),
+            // ident
+            (Token::Ident(_), t) => {
+                postfix_output.push(token.clone());
 
-            // Other ident
-            (Token::Ident(_), _) => postfix_output.push(token.clone()),
+                if let Token::OpenParenthesis = t {
+                    postfix_output.push(t.clone());
+                }
+            },
 
             // function argument separator
             (Token::Comma, _) => if prefix_counter == 0 {
@@ -335,8 +334,10 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
 
                 // function / relation token to be pushed
                 if let Some(Token::Ident(s)) = stack.last() {
-                    postfix_output.push(stack.pop().unwrap())
+                    postfix_output.push(stack.pop().unwrap());
                 }
+
+                postfix_output.push(token.clone());
             },
         }
 

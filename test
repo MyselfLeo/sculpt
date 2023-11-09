@@ -4,4 +4,4 @@
 ( forall x , H ( x ) => M ( x ) ) => ( H ( Socrate ) ) => M ( Socrate ) 
 
 
-forall x x H x M => Socrate H Socrate ( M => => 
+forall x H ( x ) M ( x ) => ) H ( Socrate ) ) M ( Socrate ( => => 
