@@ -23,6 +23,6 @@ fn main() {
     println!("\n\n");
 
     let postfix = parser::infix_to_postfix(&tokens).unwrap();
-    println!("{:?}", tokens);
+    println!("{:?}", postfix);
 
 }

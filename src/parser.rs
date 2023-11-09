@@ -1,6 +1,5 @@
 use std::fmt::Display;
 use itertools::Itertools;
-use itertools::Itertools::tuple_windows;
 
 use crate::inductive::Formula;
 
@@ -242,6 +241,8 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
 /// parenthesis, the operators precedence and the associativity of operators.
 /// The parenthesis will get removed.
 ///
+/// There is a special case for quantifiers, which stay in their original order
+///
 /// See https://www.chris-j.co.uk/parsing.php for more information about the algorithm used
 pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
     let mut postfix_output: Vec<Token> = Vec::new();
@@ -258,19 +259,20 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
             (Token::Ident(_), Token::OpenParenthesis) => stack.push(token.clone()),
 
             // Other ident
-            (Token::Ident(_), _) => stack.push(token.clone()),
+            (Token::Ident(_), _) => postfix_output.push(token.clone()),
 
             // function argument separator
             (Token::Comma, _) => if prefix_counter == 0 {
                 while let Some(Token::OpenParenthesis) = stack.last() {
-                    postfix_output.push(stack.pop().ok_or(Err("Internal error".to_string()))?);
+                    let op = stack.pop().ok_or("Internal error".to_string());
+                    postfix_output.push(op?);
                 }
             }
 
 
             (Token::Op(Op::Forall), _) | (Token::Op(Op::Exists), _) => {
                 prefix_counter += 2;
-                postfix_output.
+                postfix_output.push(token.clone());
             }
 
             (Token::Op(op), _) => {
@@ -308,11 +310,12 @@ pub fn infix_to_postfix(infix: &Vec<Token>) -> Result<Vec<Token>, String> {
             (Token::OpenParenthesis, _) => {stack.push(token.clone())}
 
             (Token::CloseParenthesis, _) => {
-                while let Some(&Token::Op(_)) = stack.last() {
+                while let Some(t) = stack.last() {
+                    if let Token::OpenParenthesis = t {
+                        break;
+                    }
                     postfix_output.push(stack.pop().unwrap())
                 }
-                 if let Some(Token::OpenParenthesis) = stack.pop() { /* expected */ }
-                 else { return Err("Invalid expression".to_string()) }
 
                 // function / relation token to be pushed
                 if let Some(Token::Ident(s)) = stack.last() {

@@ -1,0 +1,8 @@
+[OpenParenthesis, Op(Forall), Ident("x"), Comma, Ident("H"), OpenParenthesis, Ident("x"), CloseParenthesis, Op(Implies), Ident("M"), OpenParenthesis, Ident("x"), CloseParenthesis, CloseParenthesis, Op(Implies), OpenParenthesis, Ident("H"), OpenParenthesis, Ident("Socrate"), CloseParenthesis, CloseParenthesis, Op(Implies), Ident("M"), OpenParenthesis, Ident("Socrate"), CloseParenthesis]
+
+(forall x, H(x) => M(x)) => (H(Socrate)) => M(Socrate)
+
+
+[Op(Forall), Ident("x"), OpenParenthesis, Ident("x"), Ident("x"), Ident("Socrate"), Ident("Socrate"), OpenParenthesis, Ident("M"), Op(Implies), OpenParenthesis, Ident("H"), OpenParenthesis, Op(Implies), OpenParenthesis, Ident("M"), Op(Implies), OpenParenthesis, Ident("H")]
+
+forall x ( x x Socrate Socrate (M => (H(=>
