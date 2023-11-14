@@ -28,12 +28,4 @@ fn main() {
 
     println!("{token_str}");
     println!("\n");
-
-    let postfix = parser::infix_to_postfix(&tokens).unwrap();
-    let postfix_str = postfix
-        .iter()
-        .map(|t| format!("{} ", t.to_string()))
-        .collect::<String>();
-    println!("{postfix_str}");
-
 }

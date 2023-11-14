@@ -1,4 +1,6 @@
 use std::fmt::{Display, Formatter};
+use std::iter::Peekable;
+use std::slice::Iter;
 use itertools::Itertools;
 
 use crate::inductive::Formula;
@@ -249,6 +251,72 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
 }
 
 
+
+
+
+macro_rules! parse_err {
+    ($txt:literal) => {
+        return Err(String::from($txt))
+    };
+    ($($arg:tt)*) => {{
+        return Err($crate::format_args!($($arg)*))
+    }};
+}
+
+
+
+
+pub fn formula_from_tokens(tokens: &Vec<Token>) -> Result<Box<Formula>, String> {
+    parse_formula(tokens.iter().peekable(), 0)
+}
+
+
+
+
+fn parse_formula(mut iter: Peekable<Iter<Token>>, mut formula_stack: Vec<Box<Formula>>, parenthesis_depth: u8) -> Result<Box<Formula>, String> {
+    match iter.next() {
+        None => parse_err!("Unexpected end of formula"),
+        Some(Token::Ident(s)) => todo!(),
+        Some(Token::Op(op)) => {
+            let other_formula = parse_formula(iter, formula_stack, parenthesis_depth)?;
+
+
+
+        }
+        Some(Token::OpenParenthesis) => parse_formula(iter, formula_stack, parenthesis_depth + 1),
+        Some(Token::CloseParenthesis) => parse_err!("Unexpected '{}'", Token::CloseParenthesis),
+        Some(Token::Comma) => parse_err!("Unexpected '{}'", Token::Comma),
+    };
+
+    todo!()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 /// Convert infix operators to postfix in the token list.
 ///
 /// See https://www.chris-j.co.uk/parsing.php for more information about the algorithm used
@@ -364,7 +432,7 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
     for token in postfix {
         let formula = match token {
             //Token::Ident(id) => Formula::Relation(id.clone()),
-            Token::Ident(id) => todo!(),
+            Token::Ident(id) => unimplemented!(),
             //Token::Bottom => Formula::Bottom,
             Token::Op(op) => match op {
                 Op::Not => Formula::Not(formula_stack.pop().unwrap()),
@@ -377,8 +445,8 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
                         Op::Or => Formula::Or(lhs, rhs),
                         Op::And => Formula::And(lhs, rhs),
                         Op::Implies => Formula::Implies(lhs, rhs),
-                        Op::Forall => todo!(),
-                        Op::Exists => todo!(),
+                        Op::Forall => unimplemented!(),
+                        Op::Exists => unimplemented!(),
                     }
                 }
             },
@@ -398,4 +466,4 @@ pub fn formula_from_tokens(postfix: &Vec<Token>) -> Result<Box<Formula>, String>
         Some(f) => Ok(f),
         None => Err("Invalid expression".to_string()),
     }
-}
+}*/
