@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::slice::Iter;
 use itertools::Itertools;
 
-use crate::inductive::Formula;
+use crate::inductive::{Formula, Term};
 
 pub enum Associativity {
     Left,
@@ -101,7 +101,7 @@ impl Display for Op {
 
 
 #[derive(Debug, Clone)]
-pub enum Token {
+pub enum TerminalToken {
     //Keyword(Keyword),
     Ident(String),
     //Bottom,
@@ -111,14 +111,14 @@ pub enum Token {
     Comma
 }
 
-impl Display for Token {
+impl Display for TerminalToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Ident(s) => write!(f, "{s}"),
-            Token::Op(op) => write!(f, "{op}"),
-            Token::OpenParenthesis => write!(f, "("),
-            Token::CloseParenthesis => write!(f, ")"),
-            Token::Comma => write!(f, ",")
+            TerminalToken::Ident(s) => write!(f, "{s}"),
+            TerminalToken::Op(op) => write!(f, "{op}"),
+            TerminalToken::OpenParenthesis => write!(f, "("),
+            TerminalToken::CloseParenthesis => write!(f, ")"),
+            TerminalToken::Comma => write!(f, ",")
         }
     }
 }
@@ -136,7 +136,7 @@ enum LexerStates {
 macro_rules! op_push {
     ($buf:ident, $res:ident) => {
         match Op::from_str(&$buf.as_str()) {
-            Some(op) => $res.push(Token::Op(op)),
+            Some(op) => $res.push(TerminalToken::Op(op)),
             None => return Err(format!("Expected operator, got {} instead", $buf))
         }
         $buf.clear();
@@ -145,7 +145,7 @@ macro_rules! op_push {
 
 macro_rules! ident_push {
     ($buf:ident, $res:ident) => {
-        $res.push(Token::Ident($buf.clone()));
+        $res.push(TerminalToken::Ident($buf.clone()));
         $buf.clear();
     };
 }
@@ -172,8 +172,8 @@ macro_rules! buf_push {
 
 
 /// Convert the string expression into a Vec of Tokens
-pub fn lex(src: &str) -> Result<Vec<Token>, String> {
-    let mut res: Vec<Token> = Vec::new();
+pub fn lex(src: &str) -> Result<Vec<TerminalToken>, String> {
+    let mut res: Vec<TerminalToken> = Vec::new();
     let mut buf = String::new();
     let mut state = LexerStates::Idle;
 
@@ -202,7 +202,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
         // End of current token, separation
         if c == ',' {
             buf_push!(buf, res, state);
-            res.push(Token::Comma);
+            res.push(TerminalToken::Comma);
             state = LexerStates::Idle;
 
             continue;
@@ -222,8 +222,8 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
             buf_push!(buf, res, state);
             state = LexerStates::Idle;
 
-            if c == '(' {res.push(Token::OpenParenthesis);}
-            else {res.push(Token::CloseParenthesis);}
+            if c == '(' {res.push(TerminalToken::OpenParenthesis);}
+            else {res.push(TerminalToken::CloseParenthesis);}
         }
 
         // Bottom symbol
@@ -254,10 +254,53 @@ pub fn lex(src: &str) -> Result<Vec<Token>, String> {
 
 
 
+
+enum NonTerminalToken {
+    Formula,
+    PrimitiveFormula,
+    Term,
+    Connective,
+    Quantifier,
+    Constant,
+    Variable
+}
+
+
+
+enum Token {
+    TerminalToken(TerminalToken),
+    NonTerminalToken(NonTerminalToken)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 macro_rules! parse_err {
-    ($txt:literal) => {
-        return Err(String::from($txt))
-    };
     ($($arg:tt)*) => {{
         return Err($crate::format_args!($($arg)*))
     }};
@@ -266,19 +309,22 @@ macro_rules! parse_err {
 
 
 
-pub fn formula_from_tokens(tokens: &Vec<Token>) -> Result<Box<Formula>, String> {
-    parse_formula(tokens.iter().peekable(), 0)
+/*pub fn formula_from_tokens(tokens: &Vec<Token>) -> Result<Box<Formula>, String> {
+    let mut depth: u8 = 0;
+    let mut formula_stack = vec![];
+    parse_formula(tokens.iter().peekable(), &mut formula_stack, &mut depth)
 }
 
 
 
 
-fn parse_formula(mut iter: Peekable<Iter<Token>>, mut formula_stack: Vec<Box<Formula>>, parenthesis_depth: u8) -> Result<Box<Formula>, String> {
+fn parse_formula(mut iter: Peekable<Iter<Token>>, mut formula_stack: &Vec<Box<Formula>>, parenthesis_depth: &mut u8) -> Result<Box<Formula>, String> {
     match iter.next() {
         None => parse_err!("Unexpected end of formula"),
         Some(Token::Ident(s)) => todo!(),
         Some(Token::Op(op)) => {
-            let other_formula = parse_formula(iter, formula_stack, parenthesis_depth)?;
+
+            match (op.get_associativity(), op.)
 
 
 
@@ -289,7 +335,7 @@ fn parse_formula(mut iter: Peekable<Iter<Token>>, mut formula_stack: Vec<Box<For
     };
 
     todo!()
-}
+}*/
 
 
 
