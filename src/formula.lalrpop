@@ -1,0 +1,39 @@
+use crate::inductive;
+
+grammar;
+
+// Comma separated elements
+Comma<T>: Vec<T> = { // (1)
+    <mut v:(<T> ",")*> <e:T?> => match e { // (2)
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+// Appears in function terms
+Terms = Comma<Term>;
+
+
+
+
+
+Formula: Box<inductive::Formula> = {
+    Relation
+    Not,
+    Or,
+    And,
+    Implies,
+    Forall,
+    Exists
+}
+
+
+
+
+pub Term: Box<inductive::Term> = {
+    <n:r"[a-zA-Z0-9]+'*"> => Box::new(inductive::Term::Variable(n.to_string())),
+    <n:r"[a-zA-Z0-9]+'*"> "(" <v:Terms> ")" => Box::new(inductive::Term::Function(n.to_string(), v))
+}
