@@ -1,12 +1,20 @@
 mod inductive;
-mod parser;
 mod sequent;
 mod rule;
 mod proof;
 mod repl;
 mod tools;
 
-use crate::repl::Repl;
+
+use lalrpop_util::lalrpop_mod;
+
+
+use inductive::Formula;
+use repl::Repl;
+
+
+lalrpop_mod!(pub parser);
+
 
 
 fn start_repl() {
@@ -16,16 +24,5 @@ fn start_repl() {
 
 
 fn main() {
-    let formula = "(forall x, H(x) => M(x)) => (H(Socrate)) => M(Socrate)";
-    let tokens = parser::lex(formula).unwrap();
-    let token_str = tokens
-        .iter()
-        .map(|t| format!("{} ", t.to_string()))
-        .collect::<String>();
-
-    println!("{formula}");
-    println!("\n");
-
-    println!("{token_str}");
-    println!("\n");
+    start_repl();
 }
