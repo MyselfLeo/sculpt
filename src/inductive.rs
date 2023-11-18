@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::{tools, formula};
+use crate::{tools, parser};
 
 
 
@@ -48,7 +48,6 @@ impl Term {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Formula {
-    //Bottom,
     Relation(String, Vec<Box<Term>>),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
@@ -60,9 +59,7 @@ pub enum Formula {
 
 impl Formula {
     pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
-        //let formula = formula::FormulaParser::new();
-
-        todo!()
+        parser::FormulaParser::new().parse(str).map_err(|_| "Invalid formula".to_string())
     }
 
     pub fn get_precedence(&self) -> u8 {
