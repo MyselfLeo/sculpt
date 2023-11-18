@@ -1,5 +1,5 @@
 mod inductive;
-mod parser;
+mod parsing;
 mod sequent;
 mod rule;
 mod proof;
@@ -17,7 +17,7 @@ fn start_repl() {
 
 fn main() {
     let formula = "(forall x, H(x) => M(x)) => (H(Socrate)) => M(Socrate)";
-    let tokens = parser::lex(formula).unwrap();
+    let tokens = parsing::lexer::lex(formula).unwrap();
     let token_str = tokens
         .iter()
         .map(|t| format!("{} ", t.to_string()))

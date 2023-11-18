@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
-use crate::{parser, tools};
+use crate::parsing::lexer;
+use crate::tools;
 
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +60,7 @@ pub enum Formula {
 
 impl Formula {
     pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
-        let tokens = parser::lex(str)?;
+        let tokens = lexer::lex(str)?;
         unimplemented!()
         //let postfix = parser::infix_to_postfix(&tokens)?;
         //parser::formula_from_tokens(&postfix)
