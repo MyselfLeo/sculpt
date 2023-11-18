@@ -7,9 +7,6 @@ mod tools;
 
 
 use lalrpop_util::lalrpop_mod;
-
-
-use inductive::Formula;
 use repl::Repl;
 
 

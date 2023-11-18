@@ -85,6 +85,49 @@ impl Formula {
             Formula::Exists(_, _) => "exists"
         }
     }
+
+    /// Return respectively the free and bound variables of the formula.
+    /// If a variable is both free and bound (ex: P(x) \/ forall x, Y),
+    /// it will be considered free in the overall formula.
+    pub fn domain(&self) -> (Vec<String>, Vec<String>) {
+        match self {
+            Formula::Relation(_, t) => {
+                let free = t.iter()
+                            .map(|t| t.domain())
+                            .flatten()
+                            .collect();
+
+                (free, vec![])
+            },
+
+            Formula::Exists(v, f) | Formula::Forall(v, f) => {
+                let mut res = f.domain();
+                res.1.push(v.to_string());
+                res
+            },
+
+            Formula::Not(f) => f.domain(),
+            Formula::Or(f1, f2) => {
+                let mut new = (vec![], vec![]);
+                let mut d1 = f1.domain();
+                let mut d2 = f2.domain();
+
+                new.0.append(&mut d1.0);
+                new.0.append(&mut d2.0);
+
+                for v in d1.1 {
+                    if !new.0.contains(&v) {new.1.push(v)}
+                }
+                for v in d2.1 {
+                    if !new.0.contains(&v) {new.1.push(v)}
+                }
+
+                new
+            },
+            Formula::And(_, _) => todo!(),
+            Formula::Implies(_, _) => todo!(),
+        }
+    }
 }
 
 
