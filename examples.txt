@@ -10,5 +10,4 @@ Autres:
 
 
 
-forall x, H(x) => M(x)
-H(Socrate)
+(forall x, H(x) => M(x)) => H(socrate) => M(socrate)
