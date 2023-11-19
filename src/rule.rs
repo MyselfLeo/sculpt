@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
+use crate::parser;
 use crate::sequent::Sequent;
-use crate::inductive::Formula;
+use crate::inductive::{Formula, Term};
 
 
 
@@ -205,8 +206,22 @@ impl Rule {
 
 
 
-            Rule::Generalize(term) => {
-                todo!()
+            Rule::Generalize(t) => {
+                let term = parser::TermParser::new().parse(t).map_err(|_| ())?;
+                // the term must be present in the formula for it to be generalized
+                if !sequent.consequent.exists(&term) {return Err(())}
+
+                let new_v = sequent.consequent.new_variable();
+                let mut generalized = sequent.consequent.clone();
+                generalized.rewrite(&term, &Term::Variable(new_v.clone()));
+
+                let quantified = Formula::Forall(new_v, generalized);
+
+                let new_seq = vec![
+                    Sequent::new(sequent.antecedents.clone(), Box::new(quantified), sequent.bound_variables.clone())
+                ];
+
+                Ok(new_seq)
             }
 
 

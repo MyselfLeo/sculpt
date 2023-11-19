@@ -33,6 +33,40 @@ impl Term {
         parser::TermParser::new().parse(str).map_err(|_| "Invalid term".to_string())
     }
 
+    /// Return whether the given term is used somewhere in this term or not.
+    pub fn exists(&self, term: &Term) -> bool {
+        if self == term {true}
+        else {
+            match self {
+                Term::Variable(_) => false,
+                Term::Function(_, terms) => {
+                    terms.iter().any(|t| t.exists(term))
+                }
+            }
+        }
+    }
+
+
+    /// Replace in this term a term by another.
+    pub fn rewrite(&mut self, old: &Term, new: &Term) {
+        if self == old {
+            println!("h");
+            *self = new.clone();
+        }
+
+        else {
+            match self {
+                Term::Function(_, terms) => {
+                    for t in terms {
+                        t.rewrite(old, new)
+                    }
+                }
+                _ => ()
+            }
+        }
+    }
+
+
 
     /// Return a list of each variable in the domain
     /// of this Term.
@@ -91,46 +125,101 @@ impl Formula {
         }
     }
 
-    /// Return respectively the free and bound variables of the formula.
-    /// If a variable is both free and bound (ex: P(x) \/ forall x, Y),
-    /// it will be considered free in the overall formula.
-    pub fn domain(&self) -> (Vec<String>, Vec<String>) {
+
+    /// Return whether the given term is used somewhere in this formula or not.
+    pub fn exists(&self, term: &Term) -> bool {
+        match self {
+            Formula::Relation(_, terms) => terms.iter().any(|t| t.exists(term)),
+            Formula::Not(f) => f.exists(term),
+            Formula::Or(f1, f2) => f1.exists(term) || f2.exists(term),
+            Formula::And(f1, f2) => f1.exists(term) || f2.exists(term),
+            Formula::Implies(f1, f2) => f1.exists(term) || f2.exists(term),
+            Formula::Forall(_, f) => f.exists(term),
+            Formula::Exists(_, f) => f.exists(term),
+        }
+    }
+
+
+    /// Replace in this formula a term by another.
+    pub fn rewrite(&mut self, old: &Term, new: &Term) {
+        match self {
+            Formula::Relation(_, terms) => {
+                for t in terms {
+                    t.rewrite(old, new)
+                }
+            },
+            Formula::Not(f) => f.rewrite(old, new),
+            Formula::Or(f1, f2) => {
+                f1.rewrite(old, new);
+                f2.rewrite(old, new);
+            },
+            Formula::And(f1, f2) => {
+                f1.rewrite(old, new);
+                f2.rewrite(old, new);
+            },
+            Formula::Implies(f1, f2) => {
+                f1.rewrite(old, new);
+                f2.rewrite(old, new);
+            },
+            Formula::Forall(_, f)  | Formula::Exists(_, f)=> {
+                f.rewrite(old, new)
+            }
+        }
+    }
+
+    
+    /// Return a list of the variables used in this formula
+    pub fn domain(&self) -> Vec<String> {
         match self {
             Formula::Relation(_, t) => {
-                let free = t.iter()
-                            .map(|t| t.domain())
-                            .flatten()
-                            .collect();
-
-                (free, vec![])
+                t.iter()
+                 .map(|t| t.domain())
+                 .flatten()
+                 .collect()
             },
 
             Formula::Exists(v, f) | Formula::Forall(v, f) => {
-                let mut res = f.domain();
-                res.1.push(v.to_string());
-                res
+                let mut subdomain = f.domain();
+                if !subdomain.contains(v) {subdomain.push(v.to_string());}
+
+                subdomain
             },
 
             Formula::Not(f) => f.domain(),
-            Formula::Or(f1, f2) => {
-                let mut new = (vec![], vec![]);
-                let mut d1 = f1.domain();
-                let mut d2 = f2.domain();
+            Formula::Or(f1, f2) | Formula::And(f1, f2) | Formula::Implies(f1, f2) => {
+                let mut domain = f1.domain();
+                domain.append(&mut f2.domain());
+                domain.sort();
+                domain.dedup();
 
-                new.0.append(&mut d1.0);
-                new.0.append(&mut d2.0);
-
-                for v in d1.1 {
-                    if !new.0.contains(&v) {new.1.push(v)}
-                }
-                for v in d2.1 {
-                    if !new.0.contains(&v) {new.1.push(v)}
-                }
-
-                new
+                domain
             },
-            Formula::And(_, _) => todo!(),
-            Formula::Implies(_, _) => todo!(),
+        }
+    }
+
+
+    /// Return a new variable.
+    /// It will first try variables from x to z then w to a,
+    /// then add a ' and repeat until found.
+    pub fn new_variable(&self) -> String {
+        let mut prime: u8 = 0;
+        let existing = self.domain();
+
+        let with_primes = |c: char, p: u8| {
+            let mut res = String::new();
+            res.push(c);
+            for _ in 0..p {res.push('\'')}
+            res
+        };
+
+        loop {
+            for c in ('x'..='z').chain(('w'..='a').rev()) {
+                if !existing.contains(&with_primes(c, prime)) {
+                    return with_primes(c, prime)
+                }
+            }
+
+            prime += 1;
         }
     }
 }
