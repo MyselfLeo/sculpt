@@ -47,6 +47,9 @@ pub enum ReplCommand {
     KeepLeft,
     KeepRight,
     FromOr(String),
+
+    Generalize(String),
+
     FromBottom,
     ExFalso(String),
     Qed,
@@ -72,8 +75,13 @@ impl Display for ReplCommand {
             ReplCommand::KeepLeft => write!(f, "keep_left"),
             ReplCommand::KeepRight => write!(f, "keep_right"),
             ReplCommand::FromOr(s) => write!(f, "from_or {s}"),
+
+            ReplCommand::Generalize(s) => write!(f, "gen {s}"),
+
             ReplCommand::FromBottom => write!(f, "from_bottom"),
             ReplCommand::ExFalso(s) => write!(f, "exfalso {s}"),
+
+
             ReplCommand::Qed => write!(f, "qed"),
             ReplCommand::Quit => write!(f, "quit"),
             ReplCommand::Exit => write!(f, "exit"),
@@ -138,6 +146,8 @@ impl ReplCommand {
 
             ("from_or", s) => ReplCommand::FromOr(s.to_string()),
 
+            ("gen", s) => ReplCommand::Generalize(s.to_string()),
+
             ("from_bottom", "") => ReplCommand::FromBottom,
             ("exfalso", s) => ReplCommand::ExFalso(s.to_string()),
 
@@ -162,6 +172,8 @@ impl ReplCommand {
         Ok(cmd)
     }
 }
+
+
 
 
 
@@ -220,7 +232,7 @@ impl Repl {
                 println!("proof <prop>            -- Start the proving process for prop");
                 println!();
 
-                println!("PROOF COMMANDS (P, Q: propositions)");
+                println!("PROOF COMMANDS (P, Q: formulas;  T: term)");
                 println!("qed                     -- Finish the proof (only when no more subgoals)");
                 println!("list                    -- Display the list of commands executed for this proof");
                 println!("undo                    -- Revert last operation");
@@ -235,6 +247,7 @@ impl Repl {
                 println!("keep_left");
                 println!("keep_right");
                 println!("from_or <P \\/ Q>");
+                println!("gen <T>");
                 println!("from_bottom");
                 println!("exfalso <P>");
             }
@@ -274,7 +287,7 @@ impl Repl {
             ReplState::Quitting => {}
         }
 
-        // Error msg & command prompte
+        // Error msg & command prompt
         let final_row = terminal::window_size()?.rows;
 
         if let Some(e) = &self.last_error {
@@ -302,6 +315,10 @@ impl Repl {
 
 
 
+
+
+
+
     fn execute(&mut self, command: ReplCommand) -> Result<(), ReplError> {
         match (&mut self.state, &command) {
 
@@ -318,138 +335,87 @@ impl Repl {
                 Ok(())
             },
 
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::Axiom) => {
-                match &p.borrow_mut().apply(Rule::Axiom) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e.clone()))
+            (ReplState::Proving(ref mut p, cs), subcommand) => {
+                macro_rules! apply_rule {
+                    ($rule:expr) => {
+                        match p.borrow_mut().apply($rule) {
+                            Ok(_) => {
+                                cs.push(command.clone());
+                                Ok(())
+                            },
+                            Err(e) => Err(ReplError::CommandError(e))
+                        }
+                    };
                 }
-            },
+
+                match subcommand {
+                    ReplCommand::Axiom => apply_rule!(Rule::Axiom),
+                    ReplCommand::Intro => apply_rule!(Rule::Intro),
+                    ReplCommand::Trans(s) => apply_rule!(Rule::Trans(s.to_string())),
+                    ReplCommand::Split => apply_rule!(Rule::SplitAnd),
+                    ReplCommand::AndLeft(s) => apply_rule!(Rule::And(Side::Left, s.to_string())),
+                    ReplCommand::AndRight(s) => apply_rule!(Rule::And(Side::Right, s.to_string())),
+                    ReplCommand::KeepLeft => apply_rule!(Rule::Keep(Side::Left)),
+                    ReplCommand::KeepRight => apply_rule!(Rule::Keep(Side::Right)),
+                    ReplCommand::FromOr(s) => apply_rule!(Rule::FromOr(s.to_string())),
+                    ReplCommand::FromBottom => apply_rule!(Rule::FromBottom),
+                    ReplCommand::ExFalso(s) => apply_rule!(Rule::ExFalso(s.to_string())),
+                    ReplCommand::Generalize(s) => apply_rule!(Rule::Generalize(s.to_string())),
+
+                    ReplCommand::Qed => {
+                        if p.borrow().is_finished() {
+                            cs.push(command.clone());
+                            self.state = ReplState::Qed(p.clone(), cs.clone());
+                            Ok(())
+                        } else {
+                            Err(ReplError::CommandError("Proof not finished".to_string()))
+                        }
+                    }
 
 
-            (ReplState::Proving(ref mut p, cs), ReplCommand::Intro) => {
-                match p.borrow_mut().apply(Rule::Intro) {
-                    Ok(_) => {
-                        cs.push(command.clone());
+                    ReplCommand::List => {
+                        self.state = ReplState::StepList(p.clone(), cs.clone());
                         Ok(())
+                    }
+
+
+                    ReplCommand::Undo => {
+                        let previous_state = p.borrow_mut().previous_state.clone();
+
+                        match previous_state {
+                            Some(ref ps) => {
+                                let mut command_list = cs.clone();
+                                command_list.pop();
+
+                                self.state = ReplState::Proving(RefCell::new(*ps.clone()), command_list);
+                                Ok(())
+                            },
+                            None => Err(ReplError::CommandError("No previous operation".to_string())),
+                        }
                     },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
 
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::Trans(s)) => {
-                match p.borrow_mut().apply(Rule::Trans(s.to_string())) {
-                    Ok(_) => {
-                        cs.push(command.clone());
+                    ReplCommand::Exit | ReplCommand::Return => {
+                        self.state = ReplState::Idle;
                         Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
+                    }
 
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::Split) => {
-                match p.borrow_mut().apply(Rule::SplitAnd) {
-                    Ok(_) => {
-                        cs.push(command.clone());
+                    ReplCommand::Quit => {
+                        self.state = ReplState::Quitting;
                         Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
+                    }
 
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::AndLeft(s)) => {
-                match p.borrow_mut().apply(Rule::And(Side::Left, s.to_string())) {
-                    Ok(_) => {
-                        cs.push(command.clone());
+                    ReplCommand::Help => {
+                        self.state = ReplState::Help(Box::new(self.state.clone()));
                         Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
+                    }
 
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::AndRight(s)) => {
-                match p.borrow_mut().apply(Rule::And(Side::Right, s.to_string())) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
-
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::KeepLeft) => {
-                match p.borrow_mut().apply(Rule::Keep(Side::Left)) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
-
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::KeepRight) => {
-                match p.borrow_mut().apply(Rule::Keep(Side::Right)) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
-
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::FromOr(s)) => {
-                match p.borrow_mut().apply(Rule::FromOr(s.to_string())) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            },
-
-
-            (ReplState::Proving(ref mut p, cs), ReplCommand::FromBottom) => {
-                match p.borrow_mut().apply(Rule::FromBottom) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
+                    _ => Err(ReplError::InvalidCommand)
                 }
             }
 
 
-            (ReplState::Proving(ref mut p, cs), ReplCommand::ExFalso(s)) => {
-                match p.borrow_mut().apply(Rule::ExFalso(s.to_string())) {
-                    Ok(_) => {
-                        cs.push(command.clone());
-                        Ok(())
-                    },
-                    Err(e) => Err(ReplError::CommandError(e))
-                }
-            }
 
 
-            (ReplState::Proving(ref mut p, cs), ReplCommand::Qed) => {
-                if p.borrow().is_finished() {
-                    cs.push(command.clone());
-                    self.state = ReplState::Qed(p.clone(), cs.clone());
-                    Ok(())
-                }
-                else {
-                    Err(ReplError::CommandError("Proof not finished".to_string()))
-                }
-            }
 
 
             (ReplState::Qed(_, _) | ReplState::Proving(_, _), ReplCommand::Exit | ReplCommand::Return) => {
@@ -457,27 +423,6 @@ impl Repl {
                 Ok(())
             }
 
-
-            (ReplState::Proving(ref mut p, list), ReplCommand::List) => {
-                self.state = ReplState::StepList(p.clone(), list.clone());
-                Ok(())
-            }
-
-
-            (ReplState::Proving(ref mut p, list), ReplCommand::Undo) => {
-                let previous_state = p.borrow_mut().previous_state.clone();
-                
-                match previous_state {
-                    Some(ref ps) => {
-                        let mut command_list = list.clone();
-                        command_list.pop();
-
-                        self.state = ReplState::Proving(RefCell::new(*ps.clone()), command_list);
-                        Ok(())
-                    },
-                    None => Err(ReplError::CommandError("No previous operation".to_string())),
-                }
-            }
 
 
             (_, ReplCommand::Quit) => {
