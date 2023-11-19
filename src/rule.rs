@@ -27,6 +27,9 @@ pub enum Rule {
     And(Side, String),
     Keep(Side),
     FromOr(String),
+
+    Generalize(String),
+
     FromBottom,
     ExFalso(String)
 }
@@ -41,6 +44,9 @@ impl Display for Rule {
             Rule::And(s, _) => write!(f, "And {s}"),
             Rule::Keep(s) => write!(f, "Keep {s}"),
             Rule::FromOr(_) => write!(f, "FromOr"),
+
+            Rule::Generalize(s) => write!(f, "Generalize {s}"),
+
             Rule::FromBottom => write!(f, "FromBottom"),
             Rule::ExFalso(_) => write!(f, "ExFalso")
         }
@@ -52,12 +58,35 @@ impl Rule {
 
         match self {
             Rule::Intro=> {
+                // Intro can be used to introduce predicates or bound variables
                 match sequent.consequent.as_ref() {
                     Formula::Implies(lhs, rhs) => {
                         let mut antecedents = sequent.antecedents.clone();
                         antecedents.push(lhs.to_owned());
-                        Ok(vec![Sequent { antecedents, consequent: rhs.to_owned() }])
+                        
+                        let new_seq = vec![
+                            Sequent::new(antecedents, rhs.to_owned(), sequent.bound_variables.clone())
+                        ];
+
+                        Ok(new_seq)
                     },
+
+
+
+                    Formula::Forall(v, f) => {
+                        let mut bound = sequent.bound_variables.clone();
+                        if bound.contains(v) {return Err(())}
+                        bound.push(v.clone());
+
+                        let new_seq = vec![
+                            Sequent::new(sequent.antecedents.clone(), f.to_owned(), bound)
+                        ];
+
+                        Ok(new_seq)
+                    }
+
+
+
                     _ => Err(())
                 }
             }
@@ -68,8 +97,8 @@ impl Rule {
                 match sequent.consequent.as_ref() {
                     Formula::And(lhs, rhs) => {
                         let new_seq = vec![
-                            Sequent::new(sequent.antecedents.clone(), lhs.to_owned()),
-                            Sequent::new(sequent.antecedents.clone(), rhs.to_owned())
+                            Sequent::new(sequent.antecedents.clone(), lhs.to_owned(), sequent.bound_variables.clone()),
+                            Sequent::new(sequent.antecedents.clone(), rhs.to_owned(), sequent.bound_variables.clone())
                         ];
 
                         Ok(new_seq)
@@ -89,8 +118,8 @@ impl Rule {
                 let implication = Formula::Implies(introduced_prop.clone(), (&sequent.consequent).to_owned());
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), Box::new(implication)),
-                    Sequent::new(sequent.antecedents.clone(), introduced_prop)
+                    Sequent::new(sequent.antecedents.clone(), Box::new(implication), sequent.bound_variables.clone()),
+                    Sequent::new(sequent.antecedents.clone(), introduced_prop, sequent.bound_variables.clone())
                 ];
 
                 Ok(new_seq)
@@ -119,7 +148,7 @@ impl Rule {
                 };
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), Box::new(and))
+                    Sequent::new(sequent.antecedents.clone(), Box::new(and), sequent.bound_variables.clone())
                 ];
 
                 Ok(new_seq)
@@ -137,7 +166,7 @@ impl Rule {
                         };
 
                         let new_seq = vec![
-                            Sequent::new(sequent.antecedents.clone(), (*kept).to_owned())
+                            Sequent::new(sequent.antecedents.clone(), (*kept).to_owned(), sequent.bound_variables.clone())
                         ];
 
                         Ok(new_seq)
@@ -165,13 +194,22 @@ impl Rule {
                 with_prop2.push(right_prop);
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), or.clone()),
-                    Sequent::new(with_prop1, sequent.consequent.clone()),
-                    Sequent::new(with_prop2, sequent.consequent.clone()),
+                    Sequent::new(sequent.antecedents.clone(), or.clone(), sequent.bound_variables.clone()),
+                    Sequent::new(with_prop1, sequent.consequent.clone(), sequent.bound_variables.clone()),
+                    Sequent::new(with_prop2, sequent.consequent.clone(), sequent.bound_variables.clone()),
                 ];
 
                 Ok(new_seq)
             }
+
+
+
+
+            Rule::Generalize(term) => {
+                todo!()
+            }
+
+
 
 
             Rule::FromBottom => {
@@ -194,7 +232,7 @@ impl Rule {
 
 
 
-            Rule::ExFalso(prop) => {
+            Rule::ExFalso(_) => {
                 unimplemented!()
                 // ExFalso only works if current consequent is Bottom (i.e false)
                /* match sequent.consequent.as_ref() {

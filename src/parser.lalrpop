@@ -18,7 +18,7 @@ Terms = Comma<Term>;
 Formulas = Comma<Formula>;
 
 
-pub Variable: String = {
+Variable: String = {
     <s:r"[a-z]'*"> => s.to_string()
 }
 
@@ -40,26 +40,26 @@ pub Formula: Box<Formula> = {
 }
 
 
-pub PrimitiveFormula: Box<Formula> = {
+PrimitiveFormula: Box<Formula> = {
     <n:r"[A-Z][a-zA-Z0-9]*'*"> => Box::new(Formula::Relation(n.to_string(), vec![])),
     <n:r"[A-Z][a-zA-Z0-9]*'*"> "(" <v:Terms> ")" => Box::new(Formula::Relation(n.to_string(), v)),
     <f:Parenthesized> => f,
 }
 
 
-pub Parenthesized: Box<Formula> = {
+Parenthesized: Box<Formula> = {
     "(" <f:Formula> ")" => f
 }
 
 
 
-pub Implication: Box<Formula> = {
+Implication: Box<Formula> = {
     <f1:BoolOp> "=>" <f2:Implication> => Box::new(Formula::Implies(f1, f2)),
     <f:BoolOp> => f,
 }
 
 
-pub BoolOp: Box<Formula> = {
+BoolOp: Box<Formula> = {
     <f1:BoolOp> "/\\" <f2:PrimitiveFormula> => Box::new(Formula::And(f1, f2)),
     <f1:BoolOp> "\\/" <f2:PrimitiveFormula> => Box::new(Formula::Or(f1, f2)),
     <f:PrimitiveFormula> => f

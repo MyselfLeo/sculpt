@@ -29,6 +29,11 @@ impl Display for Term {
 
 
 impl Term {
+    pub fn from_str(str: &str) -> Result<Box<Term>, String> {
+        parser::TermParser::new().parse(str).map_err(|_| "Invalid term".to_string())
+    }
+
+
     /// Return a list of each variable in the domain
     /// of this Term.
     pub fn domain(&self) -> Vec<String> {

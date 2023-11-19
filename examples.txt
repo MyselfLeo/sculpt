@@ -11,3 +11,7 @@ Autres:
 
 
 (forall x, H(x) => M(x)) => H(socrate) => M(socrate)
+
+
+forall x, P(x) => Y(x)
+(forall x, P(x)) => Y(x)
