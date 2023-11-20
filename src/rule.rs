@@ -29,7 +29,9 @@ pub enum Rule {
     Keep(Side),
     FromOr(String),
 
-    Generalize(String),
+    // term, variable
+    Generalize(String, String),
+    FixAs(String),
 
     FromBottom,
     ExFalso(String)
@@ -46,7 +48,8 @@ impl Display for Rule {
             Rule::Keep(s) => write!(f, "Keep {s}"),
             Rule::FromOr(_) => write!(f, "FromOr"),
 
-            Rule::Generalize(s) => write!(f, "Generalize {s}"),
+            Rule::Generalize(t, v) => write!(f, "Generalize {t} by {v}"),
+            Rule::FixAs(s) => write!(f, "FixAs {s}"),
 
             Rule::FromBottom => write!(f, "FromBottom"),
             Rule::ExFalso(_) => write!(f, "ExFalso")
@@ -54,8 +57,19 @@ impl Display for Rule {
     }
 }
 
+
+macro_rules! err_goal_form {
+    ($($arg:tt)*) => {
+        {
+            let res = format!("The goal must be in the form {}", format!($($arg)*));
+            res
+        }
+    };
+}
+
+
 impl Rule {
-    pub fn apply(&self, sequent: &Sequent) -> Result<Vec<Sequent>, ()> {
+    pub fn apply(&self, sequent: &Sequent) -> Result<Vec<Sequent>, String> {
 
         match self {
             Rule::Intro=> {
@@ -76,7 +90,7 @@ impl Rule {
 
                     Formula::Forall(v, f) => {
                         let mut bound = sequent.bound_variables.clone();
-                        if bound.contains(v) {return Err(())}
+                        if bound.contains(v) {return Err(format!("{v} is already bound"))}
                         bound.push(v.clone());
 
                         let new_seq = vec![
@@ -88,7 +102,7 @@ impl Rule {
 
 
 
-                    _ => Err(())
+                    _ => Err(err_goal_form!("F => P or forall V, F"))
                 }
             }
 
@@ -104,7 +118,7 @@ impl Rule {
 
                         Ok(new_seq)
                     },
-                    _ => Err(())
+                    _ => Err(err_goal_form!("P /\\ Q"))
                 }
             }
 
@@ -113,7 +127,7 @@ impl Rule {
             Rule::Trans(prop) => {
                 let introduced_prop = match Formula::from_str(prop) {
                     Ok(f) => f,
-                    Err(_) => return Err(())
+                    Err(_) => return Err(format!(""))
                 };
 
                 let implication = Formula::Implies(introduced_prop.clone(), (&sequent.consequent).to_owned());
@@ -132,7 +146,7 @@ impl Rule {
                 let is_axiom = sequent.antecedents.contains(&sequent.consequent);
 
                 if is_axiom { Ok(vec![]) }
-                else { Err(()) }
+                else { Err(format!("Not an axiom")) }
             }
 
 
@@ -140,7 +154,7 @@ impl Rule {
             Rule::And(s, prop) => {
                 let introduced_prop = match Formula::from_str(prop) {
                     Ok(f) => f,
-                    Err(_) => return Err(())
+                    Err(_) => return Err(format!("Expected a formula"))
                 };
 
                 let and = match s {
@@ -172,7 +186,7 @@ impl Rule {
 
                         Ok(new_seq)
                     },
-                    _ => Err(())
+                    _ => Err(err_goal_form!("P \\/ Q"))
                 }
             }
 
@@ -181,12 +195,12 @@ impl Rule {
             Rule::FromOr(or_prop) => {
                 let or = match Formula::from_str(or_prop) {
                     Ok(f) => f,
-                    Err(_) => return Err(())
+                    Err(_) => return Err(format!("Expected a formula in the form P \\/ Q"))
                 };
 
                 let (left_prop, right_prop) = match *or.to_owned() {
                     Formula::Or(lhs, rhs) => (lhs.clone(), rhs.clone()),
-                    _ => return Err(())
+                    _ => return Err(format!("Expected a formula in the form P \\/ Q"))
                 };
 
                 let mut with_prop1 = sequent.antecedents.clone();
@@ -206,22 +220,48 @@ impl Rule {
 
 
 
-            Rule::Generalize(t) => {
-                let term = parser::TermParser::new().parse(t).map_err(|_| ())?;
+            Rule::Generalize(t, v) => {
+                let term: Box<Term> = parser::TermParser::new().parse(t).map_err(|_| format!("Expected <Term> as <var>"))?;
+                let var: String = parser::VariableParser::new().parse(v).map_err(|_| format!("Expected <Term> as <var>"))?;
                 // the term must be present in the formula for it to be generalized
-                if !sequent.consequent.exists(&term) {return Err(())}
+                if !sequent.consequent.exists(&term) {return Err(format!("{term} not present in the goal"))}
 
-                let new_v = sequent.consequent.new_variable();
+                if sequent.consequent.domain().contains(&var) {return Err(format!("{var} already exists"))}
+                if sequent.bound_variables.contains(&var) {return Err(format!("{var} already bound"))}
+
                 let mut generalized = sequent.consequent.clone();
-                generalized.rewrite(&term, &Term::Variable(new_v.clone()));
+                generalized.rewrite(&term, &Term::Variable(var.clone()));
 
-                let quantified = Formula::Forall(new_v, generalized);
+                let quantified = Formula::Forall(var, generalized);
 
                 let new_seq = vec![
                     Sequent::new(sequent.antecedents.clone(), Box::new(quantified), sequent.bound_variables.clone())
                 ];
 
                 Ok(new_seq)
+            }
+
+
+            Rule::FixAs(t) => {
+                match sequent.consequent.as_ref() {
+
+                    Formula::Exists(exists, formula) => {
+                        let term: Box<Term> = parser::TermParser::new().parse(t).map_err(|_| format!("Expected <Term>"))?;
+                        if sequent.consequent.exists(&term) {return Err(format!("{term} already exists"))}
+
+                        let mut fixed = formula.clone();
+                        fixed.rewrite(&Term::Variable(exists.clone()), &term);
+
+                        let new_seq = vec![
+                            Sequent::new(sequent.antecedents.clone(), fixed, sequent.bound_variables.clone())
+                        ];
+
+                        Ok(new_seq)
+                    }
+
+                    _ => Err(err_goal_form!("exists <V>, <F>"))
+
+                }
             }
 
 

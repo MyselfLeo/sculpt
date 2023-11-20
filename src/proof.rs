@@ -35,21 +35,18 @@ impl Proof {
             Some(seq) => seq
         };
 
-        match rule.apply(crrt_goal) {
-            Ok(res) => {
-                self.previous_state = Some(Box::new(self.clone())); // Allow undo operation
+        let res = rule.apply(crrt_goal)?;
 
-                for new_seq in res.into_iter().rev() {
-                    self.sub_goals.insert(0, Box::new(new_seq))
-                }
+        self.previous_state = Some(Box::new(self.clone())); // Allow undo operation
 
-                self.current_goal = self.sub_goals.pop_front();
-                self.step += 1;
-
-                Ok(())
-            }
-            Err(_) => Err(format!("Unable to apply rule '{rule}'"))
+        for new_seq in res.into_iter().rev() {
+            self.sub_goals.insert(0, Box::new(new_seq))
         }
+
+        self.current_goal = self.sub_goals.pop_front();
+        self.step += 1;
+
+        Ok(())
     }
 
 

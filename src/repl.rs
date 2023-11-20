@@ -48,7 +48,9 @@ pub enum ReplCommand {
     KeepRight,
     FromOr(String),
 
-    Generalize(String),
+    // term, variable (generalize term as variable)
+    Generalize(String, String),
+    FixAs(String),
 
     FromBottom,
     ExFalso(String),
@@ -76,7 +78,8 @@ impl Display for ReplCommand {
             ReplCommand::KeepRight => write!(f, "keep_right"),
             ReplCommand::FromOr(s) => write!(f, "from_or {s}"),
 
-            ReplCommand::Generalize(s) => write!(f, "gen {s}"),
+            ReplCommand::Generalize(s1,s2) => write!(f, "gen {s1} as {s2}"),
+            ReplCommand::FixAs(s) => write!(f, "fix_as {s}"),
 
             ReplCommand::FromBottom => write!(f, "from_bottom"),
             ReplCommand::ExFalso(s) => write!(f, "exfalso {s}"),
@@ -146,7 +149,16 @@ impl ReplCommand {
 
             ("from_or", s) => ReplCommand::FromOr(s.to_string()),
 
-            ("gen", s) => ReplCommand::Generalize(s.to_string()),
+            ("gen", s) => {
+                let (term, var_name) = match s.split_once("as") {
+                    None => return Err(ReplError::InvalidCommand),
+                    Some((c1, c2)) => (c1.trim(), c2.trim())
+                };
+
+                ReplCommand::Generalize(term.to_string(), var_name.to_string())
+            },
+
+            ("fix_as", s) => ReplCommand::FixAs(s.to_string()),
 
             ("from_bottom", "") => ReplCommand::FromBottom,
             ("exfalso", s) => ReplCommand::ExFalso(s.to_string()),
@@ -232,7 +244,7 @@ impl Repl {
                 println!("proof <prop>            -- Start the proving process for prop");
                 println!();
 
-                println!("PROOF COMMANDS (P, Q: formulas;  T: term)");
+                println!("PROOF COMMANDS (P, Q: formulas;  T: term;  V: variable)");
                 println!("qed                     -- Finish the proof (only when no more subgoals)");
                 println!("list                    -- Display the list of commands executed for this proof");
                 println!("undo                    -- Revert last operation");
@@ -247,7 +259,8 @@ impl Repl {
                 println!("keep_left");
                 println!("keep_right");
                 println!("from_or <P \\/ Q>");
-                println!("gen <T>");
+                println!("gen <T> as <V>");
+                println!("fix_as <T>");
                 println!("from_bottom");
                 println!("exfalso <P>");
             }
@@ -360,7 +373,8 @@ impl Repl {
                     ReplCommand::FromOr(s) => apply_rule!(Rule::FromOr(s.to_string())),
                     ReplCommand::FromBottom => apply_rule!(Rule::FromBottom),
                     ReplCommand::ExFalso(s) => apply_rule!(Rule::ExFalso(s.to_string())),
-                    ReplCommand::Generalize(s) => apply_rule!(Rule::Generalize(s.to_string())),
+                    ReplCommand::Generalize(t, v) => apply_rule!(Rule::Generalize(t.to_string(), v.to_string())),
+                    ReplCommand::FixAs(s) => apply_rule!(Rule::FixAs(s.to_string())),
 
                     ReplCommand::Qed => {
                         if p.borrow().is_finished() {
@@ -418,7 +432,7 @@ impl Repl {
 
 
 
-            (ReplState::Qed(_, _) | ReplState::Proving(_, _), ReplCommand::Exit | ReplCommand::Return) => {
+            (ReplState::Qed(_, _), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = ReplState::Idle;
                 Ok(())
             }

@@ -18,7 +18,7 @@ Terms = Comma<Term>;
 Formulas = Comma<Formula>;
 
 
-Variable: String = {
+pub Variable: String = {
     <s:r"[a-z]'*"> => s.to_string()
 }
 
