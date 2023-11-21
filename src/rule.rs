@@ -80,7 +80,7 @@ impl Rule {
                         antecedents.push(lhs.to_owned());
                         
                         let new_seq = vec![
-                            Sequent::new(antecedents, rhs.to_owned(), sequent.bound_variables.clone())
+                            Sequent::new(antecedents, rhs.to_owned())
                         ];
 
                         Ok(new_seq)
@@ -94,7 +94,7 @@ impl Rule {
                         bound.push(v.clone());
 
                         let new_seq = vec![
-                            Sequent::new(sequent.antecedents.clone(), f.to_owned(), bound)
+                            Sequent::new(sequent.antecedents.clone(), f.to_owned())
                         ];
 
                         Ok(new_seq)
@@ -112,8 +112,8 @@ impl Rule {
                 match sequent.consequent.as_ref() {
                     Formula::And(lhs, rhs) => {
                         let new_seq = vec![
-                            Sequent::new(sequent.antecedents.clone(), lhs.to_owned(), sequent.bound_variables.clone()),
-                            Sequent::new(sequent.antecedents.clone(), rhs.to_owned(), sequent.bound_variables.clone())
+                            Sequent::new(sequent.antecedents.clone(), lhs.to_owned()),
+                            Sequent::new(sequent.antecedents.clone(), rhs.to_owned())
                         ];
 
                         Ok(new_seq)
@@ -133,8 +133,8 @@ impl Rule {
                 let implication = Formula::Implies(introduced_prop.clone(), (&sequent.consequent).to_owned());
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), Box::new(implication), sequent.bound_variables.clone()),
-                    Sequent::new(sequent.antecedents.clone(), introduced_prop, sequent.bound_variables.clone())
+                    Sequent::new(sequent.antecedents.clone(), Box::new(implication)),
+                    Sequent::new(sequent.antecedents.clone(), introduced_prop)
                 ];
 
                 Ok(new_seq)
@@ -163,7 +163,7 @@ impl Rule {
                 };
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), Box::new(and), sequent.bound_variables.clone())
+                    Sequent::new(sequent.antecedents.clone(), Box::new(and))
                 ];
 
                 Ok(new_seq)
@@ -181,7 +181,7 @@ impl Rule {
                         };
 
                         let new_seq = vec![
-                            Sequent::new(sequent.antecedents.clone(), (*kept).to_owned(), sequent.bound_variables.clone())
+                            Sequent::new(sequent.antecedents.clone(), (*kept).to_owned())
                         ];
 
                         Ok(new_seq)
@@ -209,9 +209,9 @@ impl Rule {
                 with_prop2.push(right_prop);
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), or.clone(), sequent.bound_variables.clone()),
-                    Sequent::new(with_prop1, sequent.consequent.clone(), sequent.bound_variables.clone()),
-                    Sequent::new(with_prop2, sequent.consequent.clone(), sequent.bound_variables.clone()),
+                    Sequent::new(sequent.antecedents.clone(), or.clone()),
+                    Sequent::new(with_prop1, sequent.consequent.clone()),
+                    Sequent::new(with_prop2, sequent.consequent.clone()),
                 ];
 
                 Ok(new_seq)
@@ -227,7 +227,6 @@ impl Rule {
                 if !sequent.consequent.exists(&term) {return Err(format!("{term} not present in the goal"))}
 
                 if sequent.consequent.domain().contains(&var) {return Err(format!("{var} already exists"))}
-                if sequent.bound_variables.contains(&var) {return Err(format!("{var} already bound"))}
 
                 let mut generalized = sequent.consequent.clone();
                 generalized.rewrite(&term, &Term::Variable(var.clone()));
@@ -235,7 +234,7 @@ impl Rule {
                 let quantified = Formula::Forall(var, generalized);
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), Box::new(quantified), sequent.bound_variables.clone())
+                    Sequent::new(sequent.antecedents.clone(), Box::new(quantified))
                 ];
 
                 Ok(new_seq)
@@ -253,7 +252,7 @@ impl Rule {
                         fixed.rewrite(&Term::Variable(exists.clone()), &term);
 
                         let new_seq = vec![
-                            Sequent::new(sequent.antecedents.clone(), fixed, sequent.bound_variables.clone())
+                            Sequent::new(sequent.antecedents.clone(), fixed)
                         ];
 
                         Ok(new_seq)
