@@ -15,6 +15,13 @@ impl Sequent {
     pub fn new(antecedents: Vec<Box<Formula>>, consequent: Box<Formula>) -> Sequent {
         Sequent { antecedents, consequent: consequent.clone() }
     }
+
+    pub fn domain(&self) -> Vec<String> {
+        self.antecedents.iter()
+            .map(|t| t.domain())
+            .flatten()
+            .collect()
+    }
 }
 
 impl Display for Sequent {

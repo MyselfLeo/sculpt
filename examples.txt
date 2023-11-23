@@ -22,4 +22,6 @@ forall x, P(x) => Y(x)
 H(socrate) => (exists x, H(x))
 
 
+
+
 H(ertrtygh) => (exists x, H(x))

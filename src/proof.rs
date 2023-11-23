@@ -16,7 +16,7 @@ pub struct Proof {
 
 impl Proof {
     pub fn start(goal: Box<Formula>) -> Proof {
-        let goal_seq = Sequent::new(vec![], goal.clone(), vec![]);
+        let goal_seq = Sequent::new(vec![], goal.clone());
 
         Proof {
             goal: *goal.clone(),

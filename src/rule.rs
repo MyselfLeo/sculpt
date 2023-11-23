@@ -89,9 +89,9 @@ impl Rule {
 
 
                     Formula::Forall(v, f) => {
-                        let mut bound = sequent.bound_variables.clone();
-                        if bound.contains(v) {return Err(format!("{v} is already bound"))}
-                        bound.push(v.clone());
+                        if sequent.domain().contains(v) {
+                            return Err(format!("{v} already exists"))
+                        }
 
                         let new_seq = vec![
                             Sequent::new(sequent.antecedents.clone(), f.to_owned())
