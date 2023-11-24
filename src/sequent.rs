@@ -16,6 +16,7 @@ impl Sequent {
         Sequent { antecedents, consequent: consequent.clone() }
     }
 
+    /// Return a list of free variables in this sequent
     pub fn domain(&self) -> Vec<String> {
         self.antecedents.iter()
             .map(|t| t.domain())

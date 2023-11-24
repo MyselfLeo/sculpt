@@ -168,27 +168,36 @@ impl Formula {
     }
 
     
-    /// Return a list of the variables used in this formula
+    /// Return a list of the free variables used in this formula
     pub fn domain(&self) -> Vec<String> {
+        self.domain_checked(vec![])
+    }
+
+
+    /// Return a list of the free variables used in this formula.
+    /// This function store recursively the bound variables so they are not considered free
+    /// in sub-formulas of quantifiers
+    fn domain_checked(&self, bound: Vec<String>) -> Vec<String> {
         match self {
             Formula::Relation(_, t) => {
                 t.iter()
-                 .map(|t| t.domain())
-                 .flatten()
-                 .collect()
+                    .map(|t| t.domain())
+                    .flatten()
+                    .filter(|v| !bound.contains(v))
+                    .collect()
             },
 
             Formula::Exists(v, f) | Formula::Forall(v, f) => {
-                let mut subdomain = f.domain();
-                if !subdomain.contains(v) {subdomain.push(v.to_string());}
+                let mut new_bound = bound.clone();
+                if !new_bound.contains(v) {new_bound.push(v.clone());}
 
-                subdomain
+                f.domain_checked(new_bound)
             },
 
-            Formula::Not(f) => f.domain(),
+            Formula::Not(f) => f.domain_checked(bound),
             Formula::Or(f1, f2) | Formula::And(f1, f2) | Formula::Implies(f1, f2) => {
-                let mut domain = f1.domain();
-                domain.append(&mut f2.domain());
+                let mut domain = f1.domain_checked(bound.clone());
+                domain.append(&mut f2.domain_checked(bound));
                 domain.sort();
                 domain.dedup();
 

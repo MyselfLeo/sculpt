@@ -268,18 +268,18 @@ impl Rule {
 
 
             Rule::Consider(f) => {
-                let new_form: Formula = parser::FormulaParser::new().parse(f).map_err(|_| format!("Expected exists <var>, <Formula>"))?;
+                let new_form: Box<Formula> = parser::FormulaParser::new().parse(f).map_err(|_| format!("Expected exists <var>, <Formula>"))?;
 
-                match new_form.clone() {
+                match new_form.as_ref() {
                     Formula::Exists(var, nf) => {
                         if sequent.consequent.domain().contains(&var) {return Err(format!("{var} already exists in the goal"))}
-                        if sequent.antecedents.domain().contains(&var) {return Err(format!("{var} already exists"))}
+                        if sequent.domain().contains(&var) {return Err(format!("{var} already exists"))}
 
                         let mut with_nf = sequent.clone();
                         with_nf.antecedents.push(nf.clone());
 
                         let mut goal_nf = sequent.clone();
-                        goal_nf.consequent = Box::new(new_form);
+                        goal_nf.consequent = new_form.clone();
 
                         let new_seq = vec![
                             goal_nf,
