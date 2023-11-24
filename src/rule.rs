@@ -32,6 +32,8 @@ pub enum Rule {
     // term, variable
     Generalize(String, String),
     FixAs(String),
+    Consider(String),
+
 
     FromBottom,
     ExFalso(String)
@@ -50,6 +52,7 @@ impl Display for Rule {
 
             Rule::Generalize(t, v) => write!(f, "Generalize {t} by {v}"),
             Rule::FixAs(s) => write!(f, "FixAs {s}"),
+            Rule::Consider(s) => write!(f, "Consider {s}"),
 
             Rule::FromBottom => write!(f, "FromBottom"),
             Rule::ExFalso(_) => write!(f, "ExFalso")
@@ -260,6 +263,33 @@ impl Rule {
 
                     _ => Err(err_goal_form!("exists <V>, <F>"))
 
+                }
+            }
+
+
+            Rule::Consider(f) => {
+                let new_form: Formula = parser::FormulaParser::new().parse(f).map_err(|_| format!("Expected exists <var>, <Formula>"))?;
+
+                match new_form.clone() {
+                    Formula::Exists(var, nf) => {
+                        if sequent.consequent.domain().contains(&var) {return Err(format!("{var} already exists in the goal"))}
+                        if sequent.antecedents.domain().contains(&var) {return Err(format!("{var} already exists"))}
+
+                        let mut with_nf = sequent.clone();
+                        with_nf.antecedents.push(nf.clone());
+
+                        let mut goal_nf = sequent.clone();
+                        goal_nf.consequent = Box::new(new_form);
+
+                        let new_seq = vec![
+                            goal_nf,
+                            with_nf
+                        ];
+
+                        Ok(new_seq)
+                    }
+
+                    _ => Err(format!("Expected exists <var>, <Formula>"))
                 }
             }
 
