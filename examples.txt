@@ -22,6 +22,8 @@ forall x, P(x) => Y(x)
 H(socrate) => (exists x, H(x))
 
 
-(exists x, F) => (F => M) => M
+(exists x, P(x)) => (P(test) => M) => M
 
 H(ertrtygh) => (exists x, H(x))
+
+(exists x, A(x) /\ B(x)) => (exists x, A(x))

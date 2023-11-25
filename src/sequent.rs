@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{inductive::Formula, tools::list_str};
+use crate::inductive::Formula;
 
 
 #[derive(Clone)]
