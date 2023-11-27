@@ -88,8 +88,6 @@ impl Display for ReplCommand {
             ReplCommand::FromBottom => write!(f, "from_bottom"),
             ReplCommand::ExFalso(s) => write!(f, "exfalso {s}"),
 
-
-
             ReplCommand::Qed => write!(f, "qed"),
             ReplCommand::Quit => write!(f, "quit"),
             ReplCommand::Exit => write!(f, "exit"),
@@ -189,6 +187,90 @@ impl ReplCommand {
         };
 
         Ok(cmd)
+    }
+
+
+    pub fn name(&self) -> String {
+        match self {
+            ReplCommand::Proof(_) => "Proof",
+            ReplCommand::Axiom => "Axiom",
+            ReplCommand::Intro => "Intro",
+            ReplCommand::Trans(_) => "Trans",
+            ReplCommand::Split => "Split",
+            ReplCommand::AndLeft(_) => "AndLeft",
+            ReplCommand::AndRight(_) => "AndRight",
+            ReplCommand::KeepLeft => "KeepLeft",
+            ReplCommand::KeepRight => "KeepRight",
+            ReplCommand::FromOr(_) => "FromOr",
+            ReplCommand::Generalize(_, _) => "Generalize",
+            ReplCommand::FixAs(_) => "FixAs",
+            ReplCommand::Consider(_) => "Consider",
+            ReplCommand::RenameAs(_) => "RenameAs",
+            ReplCommand::FromBottom => "FromBottom",
+            ReplCommand::ExFalso(_) => "ExFalso",
+            ReplCommand::Qed => "Qed",
+            ReplCommand::List => "List",
+            ReplCommand::Undo => "Undo",
+            ReplCommand::Quit => "Quit",
+            ReplCommand::Exit => "Exit",
+            ReplCommand::Help => "Help",
+            ReplCommand::Return => "Return",
+        }.to_string()
+    }
+
+
+    pub fn usage(&self) -> String {
+        match self {
+            ReplCommand::Proof(_) => "proof <F>",
+            ReplCommand::Axiom => "axiom",
+            ReplCommand::Intro => "intro",
+            ReplCommand::Trans(_) => "trans <F>",
+            ReplCommand::Split => "split",
+            ReplCommand::AndLeft(_) => "and_left <F>",
+            ReplCommand::AndRight(_) => "and_right <F>",
+            ReplCommand::KeepLeft => "keep_left",
+            ReplCommand::KeepRight => "keep_right",
+            ReplCommand::FromOr(_) => "from_or <F1> \\/ <F2>",
+            ReplCommand::Generalize(_, _) => "gen <T> as <v>",
+            ReplCommand::FixAs(_) => "fix_as <T>",
+            ReplCommand::Consider(_) => "consider exists <v>, <F>",
+            ReplCommand::RenameAs(_) => "rename_as <v>",
+            ReplCommand::FromBottom => "from_bottom",
+            ReplCommand::ExFalso(_) => "exfalso <F>",
+            ReplCommand::Qed => "qed",
+            ReplCommand::List => "list",
+            ReplCommand::Undo => "undo",
+            ReplCommand::Quit => "quit",
+            ReplCommand::Exit => "exit",
+            ReplCommand::Help => "help [command]",
+            ReplCommand::Return => "return",
+        }.to_string()
+    }
+
+
+
+    pub fn schema(&self) -> Option<(Vec<String>, String)> {
+        match self {
+            ReplCommand::Axiom => (vec![""], "Γ, F ⊢ F"),
+            ReplCommand::Intro => (vec!["Γ, F ⊢ G"], "Γ ⊢ F => G"),
+            ReplCommand::Trans(_) => (vec!["Γ ⊢ F => G", "Γ ⊢ F"], "Γ ⊢ G"),
+            ReplCommand::Split => (vec!["Γ ⊢ F", "Γ ⊢ G"], "Γ ⊢ F /\\ G"),
+            ReplCommand::AndLeft(_) => (vec!["Γ ⊢ F /\\ G"], "Γ ⊢ G"),
+            ReplCommand::AndRight(_) => (vec!["Γ ⊢ G /\\ F"], "Γ ⊢ G"),
+            ReplCommand::KeepLeft => (vec!["Γ ⊢ F"], "Γ ⊢ F \\/ G"),
+            ReplCommand::KeepRight => (vec!["Γ ⊢ G"], "Γ ⊢ F \\/ G"),
+            ReplCommand::FromOr(_) => (vec!["Γ ⊢ F1 \\/ F2", "Γ, F1 ⊢ H", "Γ, F2 ⊢ H"], "Γ ⊢ H"),
+            ReplCommand::Generalize(_, _) => (vec!["Γ ⊢ forall v, F"], "Γ ⊢ F[v -> T]"),
+            ReplCommand::FixAs(_) => (vec!["Γ ⊢ F[v -> T]"], "Γ ⊢ exists v, F"),
+            ReplCommand::Consider(_) => (vec!["Γ ⊢ exists v, F", "Γ, F ⊢ G"], "Γ ⊢ G"),
+            ReplCommand::RenameAs(_) => (vec!["Γ ⊢ forall/exists v, F[x -> v]"], "Γ ⊢ forall/exists x, F"),
+            ReplCommand::FromBottom => (vec!["Γ, ~F ⊢ falsum"], "Γ ⊢ F"),
+            ReplCommand::ExFalso(_) => (vec!["Γ ⊢ F", "Γ ⊢ ~F"], "Γ ⊢ falsum"),
+
+            _ => None
+        };
+
+        todo!()
     }
 }
 
