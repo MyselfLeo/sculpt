@@ -206,6 +206,14 @@ impl Repl {
         Repl { state: ReplState::Idle, last_error: None }
     }
 
+    pub fn from(formula: String) -> Result<Repl, ReplError> {
+        let mut repl = Repl::new();
+        repl.execute(ReplCommand::Proof(formula))?;
+
+        return Ok(repl);
+    }
+    
+
     pub fn start(&mut self) -> io::Result<()> {
         execute!(io::stdout(), terminal::EnterAlternateScreen)?;
 
