@@ -29,8 +29,7 @@ pub enum Rule {
     Keep(Side),
     FromOr(String),
 
-    // term, variable
-    Generalize(String, String),
+    Generalize(String),
     FixAs(String),
     Consider(String),
     RenameAs(String),
@@ -51,7 +50,7 @@ impl Display for Rule {
             Rule::Keep(s) => write!(f, "Keep {s}"),
             Rule::FromOr(_) => write!(f, "FromOr"),
 
-            Rule::Generalize(t, v) => write!(f, "Generalize {t} by {v}"),
+            Rule::Generalize(s) => write!(f, "Generalize {s}"),
             Rule::FixAs(s) => write!(f, "FixAs {s}"),
             Rule::Consider(s) => write!(f, "Consider {s}"),
             Rule::RenameAs(s) => write!(f, "Rename {s}"),
@@ -225,13 +224,12 @@ impl Rule {
 
 
 
-            Rule::Generalize(t, v) => {
-                let term: Box<Term> = parser::TermParser::new().parse(t).map_err(|_| format!("Expected <Term> as <var>"))?;
-                let var: String = parser::VariableParser::new().parse(v).map_err(|_| format!("Expected <Term> as <var>"))?;
+            Rule::Generalize(s) => {
+                let term: Box<Term> = parser::TermParser::new().parse(s).map_err(|_| format!("Expected <Term> as <var>"))?;
                 // the term must be present in the formula for it to be generalized
                 if !sequent.consequent.exists(&term) {return Err(format!("{term} not present in the goal"))}
 
-                if sequent.consequent.domain().contains(&var) {return Err(format!("{var} already exists"))}
+                let var = sequent.consequent.new_variable();
 
                 let mut generalized = sequent.consequent.clone();
                 generalized.rewrite(&term, &Term::Variable(var.clone()));

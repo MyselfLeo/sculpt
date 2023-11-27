@@ -53,7 +53,7 @@ pub enum ReplCommand {
     FromOr(String),
 
     // term, variable (generalize term as variable)
-    Generalize(String, String),
+    Generalize(String),
     FixAs(String),
     Consider(String),
     RenameAs(String),
@@ -85,7 +85,7 @@ impl Display for ReplCommand {
             ReplCommand::KeepRight => write!(f, "keep_right"),
             ReplCommand::FromOr(s) => write!(f, "from_or {s}"),
 
-            ReplCommand::Generalize(s1,s2) => write!(f, "gen {s1} as {s2}"),
+            ReplCommand::Generalize(s) => write!(f, "gen {s}"),
             ReplCommand::FixAs(s) => write!(f, "fix_as {s}"),
             ReplCommand::Consider(s) => write!(f, "consider {s}"),
             ReplCommand::RenameAs(s) => write!(f, "rename_as {s}"),
@@ -158,14 +158,7 @@ impl ReplCommand {
 
             ("from_or", s) => ReplCommand::FromOr(s.to_string()),
 
-            ("gen", s) => {
-                let (term, var_name) = match s.split_once("as") {
-                    None => return Err(ReplError::InvalidCommand),
-                    Some((c1, c2)) => (c1.trim(), c2.trim())
-                };
-
-                ReplCommand::Generalize(term.to_string(), var_name.to_string())
-            },
+            ("gen", s) => ReplCommand::Generalize(s.to_string()),
 
             ("fix_as", s) => ReplCommand::FixAs(s.to_string()),
             ("consider", s) => ReplCommand::Consider(s.to_string()),
@@ -209,8 +202,8 @@ impl ReplCommand {
             ReplCommand::KeepLeft => "Keep_Left",
             ReplCommand::KeepRight => "Keep_Right",
             ReplCommand::FromOr(_) => "From_Or",
-            ReplCommand::Generalize(_, _) => "Generalize",
-            ReplCommand::FixAs(_) => "FixAs",
+            ReplCommand::Generalize(_) => "Generalize",
+            ReplCommand::FixAs(_) => "Fix_As",
             ReplCommand::Consider(_) => "Consider",
             ReplCommand::RenameAs(_) => "Rename_As",
             ReplCommand::FromBottom => "From_Bottom",
@@ -238,7 +231,7 @@ impl ReplCommand {
             ReplCommand::KeepLeft => "keep_left",
             ReplCommand::KeepRight => "keep_right",
             ReplCommand::FromOr(_) => "from_or <F1> \\/ <F2>",
-            ReplCommand::Generalize(_, _) => "gen <T> as <v>",
+            ReplCommand::Generalize(_) => "gen <T>",
             ReplCommand::FixAs(_) => "fix_as <T>",
             ReplCommand::Consider(_) => "consider exists <v>, <F>",
             ReplCommand::RenameAs(_) => "rename_as <v>",
@@ -287,7 +280,7 @@ impl ReplCommand {
             ReplCommand::KeepLeft => (vec!["Γ ⊢ F"], "Γ ⊢ F \\/ G"),
             ReplCommand::KeepRight => (vec!["Γ ⊢ G"], "Γ ⊢ F \\/ G"),
             ReplCommand::FromOr(_) => (vec!["Γ ⊢ F1 \\/ F2", "Γ, F1 ⊢ H", "Γ, F2 ⊢ H"], "Γ ⊢ H"),
-            ReplCommand::Generalize(_, _) => (vec!["Γ ⊢ forall v, F"], "Γ ⊢ F[v -> T]"),
+            ReplCommand::Generalize(_) => (vec!["Γ ⊢ forall v, F"], "Γ ⊢ F[v -> T]"),
             ReplCommand::FixAs(_) => (vec!["Γ ⊢ F[v -> T]"], "Γ ⊢ exists v, F"),
             ReplCommand::Consider(_) => (vec!["Γ ⊢ exists v, F", "Γ, F ⊢ G"], "Γ ⊢ G"),
             ReplCommand::RenameAs(_) => (vec!["Γ ⊢ forall/exists v, F[x -> v]"], "Γ ⊢ forall/exists x, F"),
@@ -386,7 +379,7 @@ impl Repl {
                 println!("keep_left");
                 println!("keep_right");
                 println!("from_or <F \\/ P>");
-                println!("gen <T> as <V>");
+                println!("gen <T>");
                 println!("fix_as <T>");
                 println!("consider exists <V>, <F>");
                 println!("rename_as <V>");
@@ -538,7 +531,7 @@ impl Repl {
                     ReplCommand::FromOr(s) => apply_rule!(Rule::FromOr(s.to_string())),
                     ReplCommand::FromBottom => apply_rule!(Rule::FromBottom),
                     ReplCommand::ExFalso(s) => apply_rule!(Rule::ExFalso(s.to_string())),
-                    ReplCommand::Generalize(t, v) => apply_rule!(Rule::Generalize(t.to_string(), v.to_string())),
+                    ReplCommand::Generalize(s) => apply_rule!(Rule::Generalize(s.to_string())),
                     ReplCommand::FixAs(s) => apply_rule!(Rule::FixAs(s.to_string())),
                     ReplCommand::Consider(s) => apply_rule!(Rule::Consider(s.to_string())),
                     ReplCommand::RenameAs(s) => apply_rule!(Rule::RenameAs(s.to_string())),
