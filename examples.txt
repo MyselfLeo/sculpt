@@ -27,3 +27,5 @@ H(socrate) => (exists x, H(x))
 H(ertrtygh) => (exists x, H(x))
 
 (exists x, A(x) /\ B(x)) => (exists x, A(x))
+
+P(x) /\ ~P(x) => falsum

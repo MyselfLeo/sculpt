@@ -285,7 +285,7 @@ impl Display for Formula {
                         write!(f, "~{}", v)
                     }
                     else {
-                        write!(f, "~({}({}))", v, tools::list_str(t, ", "))
+                        write!(f, "~{}({})", v, tools::list_str(t, ", "))
                     }
                 },
                 other => write!(f, "~({})", *other)
