@@ -52,6 +52,7 @@ pub enum ReplCommand {
     Generalize(String, String),
     FixAs(String),
     Consider(String),
+    RenameAs(String),
 
     FromBottom,
     ExFalso(String),
@@ -82,6 +83,7 @@ impl Display for ReplCommand {
             ReplCommand::Generalize(s1,s2) => write!(f, "gen {s1} as {s2}"),
             ReplCommand::FixAs(s) => write!(f, "fix_as {s}"),
             ReplCommand::Consider(s) => write!(f, "consider {s}"),
+            ReplCommand::RenameAs(s) => write!(f, "rename_as {s}"),
 
             ReplCommand::FromBottom => write!(f, "from_bottom"),
             ReplCommand::ExFalso(s) => write!(f, "exfalso {s}"),
@@ -163,6 +165,7 @@ impl ReplCommand {
 
             ("fix_as", s) => ReplCommand::FixAs(s.to_string()),
             ("consider", s) => ReplCommand::Consider(s.to_string()),
+            ("rename_as", s) => ReplCommand::RenameAs(s.to_string()),
 
             ("from_bottom", "") => ReplCommand::FromBottom,
             ("exfalso", s) => ReplCommand::ExFalso(s.to_string()),
@@ -266,6 +269,7 @@ impl Repl {
                 println!("gen <T> as <V>");
                 println!("fix_as <T>");
                 println!("consider exists <V>, <F>");
+                println!("rename_as <V>");
                 println!("from_bottom");
                 println!("exfalso <P>");
             }
@@ -381,6 +385,7 @@ impl Repl {
                     ReplCommand::Generalize(t, v) => apply_rule!(Rule::Generalize(t.to_string(), v.to_string())),
                     ReplCommand::FixAs(s) => apply_rule!(Rule::FixAs(s.to_string())),
                     ReplCommand::Consider(s) => apply_rule!(Rule::Consider(s.to_string())),
+                    ReplCommand::RenameAs(s) => apply_rule!(Rule::RenameAs(s.to_string())),
 
                     ReplCommand::Qed => {
                         if p.borrow().is_finished() {

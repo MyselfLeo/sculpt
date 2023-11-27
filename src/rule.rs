@@ -33,6 +33,7 @@ pub enum Rule {
     Generalize(String, String),
     FixAs(String),
     Consider(String),
+    RenameAs(String),
 
 
     FromBottom,
@@ -53,6 +54,7 @@ impl Display for Rule {
             Rule::Generalize(t, v) => write!(f, "Generalize {t} by {v}"),
             Rule::FixAs(s) => write!(f, "FixAs {s}"),
             Rule::Consider(s) => write!(f, "Consider {s}"),
+            Rule::RenameAs(s) => write!(f, "Rename {s}"),
 
             Rule::FromBottom => write!(f, "FromBottom"),
             Rule::ExFalso(_) => write!(f, "ExFalso")
@@ -293,6 +295,34 @@ impl Rule {
                 }
             }
 
+
+
+            Rule::RenameAs(s) => {
+                let var: String = parser::VariableParser::new().parse(s).map_err(|_| format!("Expected <var>"))?;
+
+                match sequent.consequent.as_ref() {
+
+                    Formula::Exists(old, f) => {
+                        let mut nf = Box::new(Formula::Exists(var, f.clone()));
+                        nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
+                        let mut new_s = sequent.clone();
+                        new_s.consequent = nf;
+
+                        Ok(vec![new_s])
+                    }
+
+                    Formula::Forall(old, f) => {
+                        let mut nf = Box::new(Formula::Forall(var, f.clone()));
+                        nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
+                        let mut new_s = sequent.clone();
+                        new_s.consequent = nf;
+
+                        Ok(vec![new_s])
+                    }
+
+                    _ => Err(err_goal_form!("exists <V>, <F> OR forall <V>, <F>"))
+                }
+            }
 
 
 
