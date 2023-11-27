@@ -36,7 +36,6 @@ pub Term: Box<Term> = {
 
 pub Formula: Box<Formula> = {
     <f:Implication> => f,
-    "~" <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
     "exists" <v:Variable> "," <f:Formula> => Box::new(Formula::Exists(v.to_string(), f)),
     "forall" <v:Variable> "," <f:Formula> => Box::new(Formula::Forall(v.to_string(), f)),
 }
@@ -46,6 +45,8 @@ PrimitiveFormula: Box<Formula> = {
     <n:r"[A-Z][a-zA-Z0-9]*'*"> => Box::new(Formula::Relation(n.to_string(), vec![])),
     <n:r"[A-Z][a-zA-Z0-9]*'*"> "(" <v:Terms> ")" => Box::new(Formula::Relation(n.to_string(), v)),
     <f:Parenthesized> => f,
+    "~" <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
+    "falsum" => Box::new(Formula::Falsum),
 }
 
 

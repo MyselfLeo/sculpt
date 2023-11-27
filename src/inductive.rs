@@ -87,6 +87,7 @@ impl Term {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Formula {
+    Falsum,
     Relation(String, Vec<Box<Term>>),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
@@ -103,8 +104,7 @@ impl Formula {
 
     pub fn get_precedence(&self) -> u8 {
         match self {
-            //Formula::Bottom => 4,
-            Formula::Relation(_, _) => 5,
+            Formula::Falsum | Formula::Relation(_, _) => 5,
             Formula::Not(_) => 4,
             Formula::And(_, _) | Formula::Or(_, _) => 3,
             Formula::Implies(_, _) => 2,
@@ -114,7 +114,7 @@ impl Formula {
 
     pub fn get_op_symbol(&self) -> &'static str {
         match self {
-            //Formula::Bottom => "",
+            Formula::Falsum => "",
             Formula::Relation(_, _) => "",
             Formula::Not(_) => "~",
             Formula::Or(_, _) => "\\/",
@@ -129,6 +129,7 @@ impl Formula {
     /// Return whether the given term is used somewhere in this formula or not.
     pub fn exists(&self, term: &Term) -> bool {
         match self {
+            Formula::Falsum => false,
             Formula::Relation(_, terms) => terms.iter().any(|t| t.exists(term)),
             Formula::Not(f) => f.exists(term),
             Formula::Or(f1, f2) => f1.exists(term) || f2.exists(term),
@@ -143,6 +144,7 @@ impl Formula {
     /// Replace in this formula a term by another.
     pub fn rewrite(&mut self, old: &Term, new: &Term) {
         match self {
+            Formula::Falsum => {}
             Formula::Relation(_, terms) => {
                 for t in terms {
                     t.rewrite(old, new)
@@ -179,6 +181,7 @@ impl Formula {
     /// in sub-formulas of quantifiers
     fn domain_checked(&self, bound: Vec<String>) -> Vec<String> {
         match self {
+            Formula::Falsum => vec![],
             Formula::Relation(_, t) => {
                 t.iter()
                     .map(|t| t.domain())
@@ -265,7 +268,7 @@ macro_rules! display_binary_right {
 impl Display for Formula {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            //Formula::Bottom => write!(f, "⊥"),
+            Formula::Falsum => write!(f, "falsum"),
 
             Formula::Relation(v, t) => {
                 if t.len() == 0 {
@@ -278,7 +281,7 @@ impl Display for Formula {
 
             Formula::Not(formula) => match formula.as_ref() {
                 Formula::Relation(v, t) => {
-                    if v.len() == 0 {
+                    if t.len() == 0 {
                         write!(f, "~{}", v)
                     }
                     else {

@@ -327,8 +327,7 @@ impl Rule {
 
 
             Rule::FromBottom => {
-                unimplemented!()
-                /*// invert current formula
+                // invert current formula
                 let new_prop = match sequent.consequent.as_ref() {
                     Formula::Not(e) => e.clone(),
                     e => Box::new(Formula::Not(Box::new(e.clone())))
@@ -338,39 +337,36 @@ impl Rule {
                 with_prop.push(new_prop);
 
                 let new_seq = vec![
-                    Sequent::new(with_prop, Box::new(Formula::Bottom))
+                    Sequent::new(with_prop, Box::new(Formula::Falsum))
                 ];
 
-                Ok(new_seq)*/
+                Ok(new_seq)
             }
 
 
 
-            Rule::ExFalso(_) => {
-                unimplemented!()
+            Rule::ExFalso(prop) => {
                 // ExFalso only works if current consequent is Bottom (i.e false)
-               /* match sequent.consequent.as_ref() {
-                    Formula::Bottom => {},
-                    _ => return Err(())
-                };
+                match sequent.consequent.as_ref() {
+                    Formula::Falsum => {
+                        let prop = parser::FormulaParser::new().parse(prop).map_err(|_| format!("Expected <F>"))?;
 
-                let (true_prop, false_prop) = match Formula::from_str(prop) {
-                    Ok(f) => {
-                        match *f {
-                            Formula::Not(ref ff) => (ff.clone(), f.clone()),
-                            o=> (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
-                        }
+                        let (true_prop, false_prop) = {
+                            match *prop {
+                                Formula::Not(ref ff) => (ff.clone(), prop.clone()),
+                                o=> (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
+                            }
+                        };
+        
+                        let new_seq = vec![
+                            Sequent::new(sequent.antecedents.clone(), true_prop),
+                            Sequent::new(sequent.antecedents.clone(), false_prop)
+                        ];
+        
+                        Ok(new_seq)
                     },
-                    Err(_) => return Err(())
-                };
-
-
-                let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), true_prop),
-                    Sequent::new(sequent.antecedents.clone(), false_prop)
-                ];
-
-                Ok(new_seq)*/
+                    _ => Err(err_goal_form!("falsum"))
+                }
             }
         }
     }
