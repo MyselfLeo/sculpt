@@ -13,3 +13,4 @@ lalrpop = "0.20.0"
 lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }
 crossterm = "0.27.0"
 itertools = { version = "0.11.0", features = [] }
+unicode-segmentation = "1.10.1"

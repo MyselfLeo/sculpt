@@ -1,19 +1,23 @@
 use std::cell::RefCell;
+use std::cmp::max;
 use std::fmt::Display;
 use std::io;
 use std::io::Write;
 use crossterm::execute;
 use crossterm::cursor::MoveTo;
 use crossterm::terminal;
+use unicode_segmentation::UnicodeSegmentation;
 use crate::inductive::Formula;
 use crate::proof::Proof;
 use crate::rule::{Rule, Side};
+use crate::tools;
 
 
 #[derive(Clone)]
 pub enum ReplState {
     Idle,
     Help(Box<ReplState>),
+    CommandHelp(ReplCommand, Box<ReplState>),
     Proving(RefCell<Proof>, Vec<ReplCommand>),
     StepList(RefCell<Proof>, Vec<ReplCommand>),
     Qed(RefCell<Proof>, Vec<ReplCommand>),
@@ -63,6 +67,7 @@ pub enum ReplCommand {
     Quit,
     Exit,
     Help,
+    HelpCommand(String),
     Return          // Command when enter is pressed with no further input
 }
 
@@ -92,6 +97,7 @@ impl Display for ReplCommand {
             ReplCommand::Quit => write!(f, "quit"),
             ReplCommand::Exit => write!(f, "exit"),
             ReplCommand::Help => write!(f, "help"),
+            ReplCommand::HelpCommand(s) => write!(f, "help {s}"),
             ReplCommand::List => write!(f, "list"),
             ReplCommand::Undo => write!(f, "undo"),
             ReplCommand::Return => write!(f, "[return]")
@@ -174,7 +180,8 @@ impl ReplCommand {
             ("quit", _) => ReplCommand::Quit,
             ("exit", _) => ReplCommand::Exit,
             ("undo", _) => ReplCommand::Undo,
-            ("help", _) => ReplCommand::Help,
+            ("help", "") => ReplCommand::Help,
+            ("help", s) => ReplCommand::HelpCommand(s.to_string()),
             ("list", _) => ReplCommand::List,
 
 
@@ -197,23 +204,23 @@ impl ReplCommand {
             ReplCommand::Intro => "Intro",
             ReplCommand::Trans(_) => "Trans",
             ReplCommand::Split => "Split",
-            ReplCommand::AndLeft(_) => "AndLeft",
-            ReplCommand::AndRight(_) => "AndRight",
-            ReplCommand::KeepLeft => "KeepLeft",
-            ReplCommand::KeepRight => "KeepRight",
-            ReplCommand::FromOr(_) => "FromOr",
+            ReplCommand::AndLeft(_) => "And_Left",
+            ReplCommand::AndRight(_) => "And_Right",
+            ReplCommand::KeepLeft => "Keep_Left",
+            ReplCommand::KeepRight => "Keep_Right",
+            ReplCommand::FromOr(_) => "From_Or",
             ReplCommand::Generalize(_, _) => "Generalize",
             ReplCommand::FixAs(_) => "FixAs",
             ReplCommand::Consider(_) => "Consider",
-            ReplCommand::RenameAs(_) => "RenameAs",
-            ReplCommand::FromBottom => "FromBottom",
+            ReplCommand::RenameAs(_) => "Rename_As",
+            ReplCommand::FromBottom => "From_Bottom",
             ReplCommand::ExFalso(_) => "ExFalso",
             ReplCommand::Qed => "Qed",
             ReplCommand::List => "List",
             ReplCommand::Undo => "Undo",
             ReplCommand::Quit => "Quit",
             ReplCommand::Exit => "Exit",
-            ReplCommand::Help => "Help",
+            ReplCommand::Help | ReplCommand::HelpCommand(_) => "Help",
             ReplCommand::Return => "Return",
         }.to_string()
     }
@@ -242,15 +249,35 @@ impl ReplCommand {
             ReplCommand::Undo => "undo",
             ReplCommand::Quit => "quit",
             ReplCommand::Exit => "exit",
-            ReplCommand::Help => "help [command]",
-            ReplCommand::Return => "return",
+            ReplCommand::Help => "help",
+            ReplCommand::HelpCommand(_) => "help [command]",
+            ReplCommand::Return => "<Empty command>",
         }.to_string()
     }
 
 
 
+    pub fn desc(&self) -> Option<String> {
+        let res = match self {
+            ReplCommand::Proof(_) => "Start the proving process of F",
+            ReplCommand::Qed => "Finish the proof (only when no more subgoals)",
+            ReplCommand::List => "Display the list of commands executed in proof mode",
+            ReplCommand::Undo => "Revert last command while in proof mode",
+            ReplCommand::Quit => "Stop deducnat",
+            ReplCommand::Exit => "Close sub-screens (help, list) or go back to main screen",
+            ReplCommand::Help => "Display this information screen",
+            ReplCommand::HelpCommand(_) => "Display information about a particular command",
+            ReplCommand::Return => "Same as 'Exit' except in proof mode where its not doing anything",
+            _ => return None
+        }.to_string();
+
+        Some(res)
+    }
+
+
+
     pub fn schema(&self) -> Option<(Vec<String>, String)> {
-        match self {
+        let (ante, cons) = match self {
             ReplCommand::Axiom => (vec![""], "Γ, F ⊢ F"),
             ReplCommand::Intro => (vec!["Γ, F ⊢ G"], "Γ ⊢ F => G"),
             ReplCommand::Trans(_) => (vec!["Γ ⊢ F => G", "Γ ⊢ F"], "Γ ⊢ G"),
@@ -267,10 +294,10 @@ impl ReplCommand {
             ReplCommand::FromBottom => (vec!["Γ, ~F ⊢ falsum"], "Γ ⊢ F"),
             ReplCommand::ExFalso(_) => (vec!["Γ ⊢ F", "Γ ⊢ ~F"], "Γ ⊢ falsum"),
 
-            _ => None
+            _ => return None
         };
-
-        todo!()
+        let ante_str: Vec<_> = ante.iter().map(|s| s.to_string()).collect();
+        Some((ante_str, cons.to_string()))
     }
 }
 
@@ -332,16 +359,19 @@ impl Repl {
 
             ReplState::Help(_) => {
                 println!("deducnat - v0.1.0");
+                println!("(F: Formula, T: Term, v: variable)");
+
                 println!();
 
                 println!("MAIN COMMANDS");
                 println!("help                    -- Display this information screen");
+                println!("help [command]          -- Display information about a particular command");
                 println!("exit                    -- Close sub-screens (help, list) or go back to main screen");
                 println!("quit                    -- Stop deducnat");
                 println!("proof <prop>            -- Start the proving process for prop");
                 println!();
 
-                println!("PROOF COMMANDS (P, Q: formulas;  T: term;  V: variable)");
+                println!("PROOF COMMANDS (more info with 'help [command]')");
                 println!("qed                     -- Finish the proof (only when no more subgoals)");
                 println!("list                    -- Display the list of commands executed for this proof");
                 println!("undo                    -- Revert last operation");
@@ -350,18 +380,54 @@ impl Repl {
                 println!("axiom");
                 println!("intro");
                 println!("split");
-                println!("trans <P>");
-                println!("and_left <P>");
-                println!("and_right <P>");
+                println!("trans <F>");
+                println!("and_left <F>");
+                println!("and_right <F>");
                 println!("keep_left");
                 println!("keep_right");
-                println!("from_or <P \\/ Q>");
+                println!("from_or <F \\/ P>");
                 println!("gen <T> as <V>");
                 println!("fix_as <T>");
                 println!("consider exists <V>, <F>");
                 println!("rename_as <V>");
                 println!("from_bottom");
-                println!("exfalso <P>");
+                println!("exfalso <F>");
+            }
+
+
+
+            ReplState::CommandHelp(command, _) => {
+                println!("deducnat - v0.1.0");
+                println!("(F: Formula, T: Term, v: variable)");
+                println!();
+
+                println!("COMMAND '{}'", command.name().to_uppercase());
+                if let Some(s) = command.desc() {
+                    println!("{s}");
+                }
+                println!();
+                println!("USAGE: {}", command.usage());
+
+                if let Some(schema) = command.schema() {
+                    println!();
+                    println!("SCHEMA:");
+                    println!();
+
+                    // sum length of elements in schema.0 and add a padding computed later
+                    let mut length_top = schema.0.iter().map(|x| x.graphemes(true).count()).sum::<usize>();
+                    length_top += (schema.0.len() - 1) * 5;
+
+                    let length_bot = schema.1.graphemes(true).count();
+
+                    let left_top_padding = if length_top < length_bot {(length_bot - length_top) / 2} else {0};
+                    let left_bot_padding = if length_top > length_bot {(length_top - length_bot) / 2} else {0};
+
+                    let antecedents_str = tools::list_str(&schema.0, " ".repeat(5).as_str());
+
+                    println!("{}{}", " ".repeat(left_top_padding), antecedents_str);
+                    println!("{}", "─".repeat(max(length_top, length_bot)));
+                    println!("{}{}", " ".repeat(left_bot_padding), schema.1);
+                }
             }
 
 
@@ -528,6 +594,19 @@ impl Repl {
                         Ok(())
                     }
 
+                    ReplCommand::HelpCommand(s) => {
+                        let command = ReplCommand::from(s)?;
+
+                        if let ReplState::CommandHelp(_, prev) = &self.state {
+                            self.state = ReplState::CommandHelp(command, prev.clone());
+                        }
+                        else {
+                            self.state = ReplState::CommandHelp(command, Box::new(self.state.clone()));
+                        }
+
+                        Ok(())
+                    }
+
                     _ => Err(ReplError::InvalidCommand)
                 }
             }
@@ -555,8 +634,21 @@ impl Repl {
                 Ok(())
             }
 
+            (_, ReplCommand::HelpCommand(s)) => {
+                let command = ReplCommand::from(s)?;
+
+                if let ReplState::CommandHelp(_, prev) = &self.state {
+                    self.state = ReplState::CommandHelp(command, prev.clone());
+                }
+                else {
+                    self.state = ReplState::CommandHelp(command, Box::new(self.state.clone()));
+                }
+
+                Ok(())
+            }
+
             
-            (ReplState::Help(state), ReplCommand::Exit | ReplCommand::Return) => {
+            (ReplState::Help(state) | ReplState::CommandHelp(_, state), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = *state.to_owned();
                 Ok(())
             }
