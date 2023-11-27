@@ -414,8 +414,12 @@ impl Repl {
                         }
                     },
 
-                    ReplCommand::Exit | ReplCommand::Return => {
+                    ReplCommand::Exit => {
                         self.state = ReplState::Idle;
+                        Ok(())
+                    }
+
+                    ReplCommand::Return => {
                         Ok(())
                     }
 
