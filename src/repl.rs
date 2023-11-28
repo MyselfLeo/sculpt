@@ -6,11 +6,21 @@ use std::io::Write;
 use crossterm::execute;
 use crossterm::cursor::MoveTo;
 use crossterm::terminal;
+use strum::{EnumIter, IntoEnumIterator};
 use unicode_segmentation::UnicodeSegmentation;
 use crate::inductive::Formula;
 use crate::proof::Proof;
 use crate::rule::{Rule, Side};
 use crate::tools;
+
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+macro_rules! titleline {
+    () => {
+        println!("deducnat - v{VERSION}");
+    };
+}
 
 
 #[derive(Clone)]
@@ -39,9 +49,17 @@ impl PartialEq for ReplState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, EnumIter)]
 pub enum ReplCommand {
     Proof(String),
+    Help,
+    HelpCommand(String),
+    Undo,
+    Exit,
+    Quit,
+    List,
+    Qed,
+
     Axiom,
     Intro,
     Trans(String),
@@ -51,24 +69,15 @@ pub enum ReplCommand {
     KeepLeft,
     KeepRight,
     FromOr(String),
-
-    // term, variable (generalize term as variable)
     Generalize(String),
     FixAs(String),
     Consider(String),
     RenameAs(String),
-
     FromBottom,
     ExFalso(String),
-    Qed,
-    List,
-    Undo,
 
-    Quit,
-    Exit,
-    Help,
-    HelpCommand(String),
-    Return          // Command when enter is pressed with no further input
+    // special command
+    Return,             // Command when enter is pressed with no further input
 }
 
 impl Display for ReplCommand {
@@ -100,7 +109,7 @@ impl Display for ReplCommand {
             ReplCommand::HelpCommand(s) => write!(f, "help {s}"),
             ReplCommand::List => write!(f, "list"),
             ReplCommand::Undo => write!(f, "undo"),
-            ReplCommand::Return => write!(f, "[return]")
+            ReplCommand::Return => write!(f, "")
         }
     }
 }
@@ -192,60 +201,54 @@ impl ReplCommand {
 
     pub fn name(&self) -> String {
         match self {
-            ReplCommand::Proof(_) => "Proof",
-            ReplCommand::Axiom => "Axiom",
-            ReplCommand::Intro => "Intro",
-            ReplCommand::Trans(_) => "Trans",
-            ReplCommand::Split => "Split",
-            ReplCommand::AndLeft(_) => "And_Left",
-            ReplCommand::AndRight(_) => "And_Right",
-            ReplCommand::KeepLeft => "Keep_Left",
-            ReplCommand::KeepRight => "Keep_Right",
-            ReplCommand::FromOr(_) => "From_Or",
-            ReplCommand::Generalize(_) => "Generalize",
-            ReplCommand::FixAs(_) => "Fix_As",
-            ReplCommand::Consider(_) => "Consider",
-            ReplCommand::RenameAs(_) => "Rename_As",
-            ReplCommand::FromBottom => "From_Bottom",
-            ReplCommand::ExFalso(_) => "ExFalso",
-            ReplCommand::Qed => "Qed",
-            ReplCommand::List => "List",
-            ReplCommand::Undo => "Undo",
-            ReplCommand::Quit => "Quit",
-            ReplCommand::Exit => "Exit",
-            ReplCommand::Help | ReplCommand::HelpCommand(_) => "Help",
-            ReplCommand::Return => "Return",
+            ReplCommand::Proof(_) => "proof",
+            ReplCommand::Help | ReplCommand::HelpCommand(_) => "help",
+            ReplCommand::Undo => "undo",
+            ReplCommand::Exit => "exit",
+            ReplCommand::Quit => "quit",
+            ReplCommand::List => "list",
+
+            ReplCommand::Axiom => "axiom",
+            ReplCommand::Intro => "intro",
+            ReplCommand::Trans(_) => "trans",
+            ReplCommand::Split => "split",
+            ReplCommand::AndLeft(_) => "and_left",
+            ReplCommand::AndRight(_) => "and_right",
+            ReplCommand::KeepLeft => "keep_left",
+            ReplCommand::KeepRight => "keep_right",
+            ReplCommand::FromOr(_) => "from_or",
+            ReplCommand::Generalize(_) => "gen",
+            ReplCommand::FixAs(_) => "fix_as",
+            ReplCommand::Consider(_) => "consider",
+            ReplCommand::RenameAs(_) => "rename_as",
+            ReplCommand::FromBottom => "from_bottom",
+            ReplCommand::ExFalso(_) => "exfalso",
+
+            ReplCommand::Qed => "qed",
+
+            ReplCommand::Return => "",
         }.to_string()
     }
 
 
     pub fn usage(&self) -> String {
-        match self {
-            ReplCommand::Proof(_) => "proof <F>",
-            ReplCommand::Axiom => "axiom",
-            ReplCommand::Intro => "intro",
-            ReplCommand::Trans(_) => "trans <F>",
-            ReplCommand::Split => "split",
-            ReplCommand::AndLeft(_) => "and_left <F>",
-            ReplCommand::AndRight(_) => "and_right <F>",
-            ReplCommand::KeepLeft => "keep_left",
-            ReplCommand::KeepRight => "keep_right",
-            ReplCommand::FromOr(_) => "from_or <F1> \\/ <F2>",
-            ReplCommand::Generalize(_) => "gen <T>",
-            ReplCommand::FixAs(_) => "fix_as <T>",
-            ReplCommand::Consider(_) => "consider exists <v>, <F>",
-            ReplCommand::RenameAs(_) => "rename_as <v>",
-            ReplCommand::FromBottom => "from_bottom",
-            ReplCommand::ExFalso(_) => "exfalso <F>",
-            ReplCommand::Qed => "qed",
-            ReplCommand::List => "list",
-            ReplCommand::Undo => "undo",
-            ReplCommand::Quit => "quit",
-            ReplCommand::Exit => "exit",
-            ReplCommand::Help => "help",
-            ReplCommand::HelpCommand(_) => "help [command]",
-            ReplCommand::Return => "<Empty command>",
-        }.to_string()
+        let args = match self {
+            ReplCommand::Proof(_) => "<F>",
+            ReplCommand::Trans(_) => "<F>",
+            ReplCommand::AndLeft(_) => "<F>",
+            ReplCommand::AndRight(_) => "<F>",
+
+            ReplCommand::FromOr(_) => "<F1> \\/ <F2>",
+            ReplCommand::Generalize(_) => "<T>",
+            ReplCommand::FixAs(_) => "<T>",
+            ReplCommand::Consider(_) => "exists <v>, <F>",
+            ReplCommand::RenameAs(_) => "<v>",
+            ReplCommand::ExFalso(_) => "<F>",
+            ReplCommand::HelpCommand(_) => "[command]",
+            _ => ""
+        }.to_string();
+
+        format!("{} {}", self.name(), args)
     }
 
 
@@ -260,7 +263,6 @@ impl ReplCommand {
             ReplCommand::Exit => "Close sub-screens (help, list) or go back to main screen",
             ReplCommand::Help => "Display this information screen",
             ReplCommand::HelpCommand(_) => "Display information about a particular command",
-            ReplCommand::Return => "Same as 'Exit' except in proof mode where its not doing anything",
             _ => return None
         }.to_string();
 
@@ -344,54 +346,36 @@ impl Repl {
         match &self.state {
 
             ReplState::Idle => {
-                println!("deducnat - v0.1.0");
+                titleline!();
                 println!("type 'proof P' to start to prove P");
                 println!("     'help' for command information");
                 println!("     'quit' to leave");
             }
 
             ReplState::Help(_) => {
-                println!("deducnat - v0.1.0");
-                println!("(F: Formula, T: Term, v: variable)");
+                titleline!();
 
+                println!("(F, G: Formula, T: Term, v: variable)");
                 println!();
 
-                println!("MAIN COMMANDS");
-                println!("help                    -- Display this information screen");
-                println!("help [command]          -- Display information about a particular command");
-                println!("exit                    -- Close sub-screens (help, list) or go back to main screen");
-                println!("quit                    -- Stop deducnat");
-                println!("proof <prop>            -- Start the proving process for prop");
+                println!("COMMANDS (more info with 'help [command]')");
                 println!();
 
-                println!("PROOF COMMANDS (more info with 'help [command]')");
-                println!("qed                     -- Finish the proof (only when no more subgoals)");
-                println!("list                    -- Display the list of commands executed for this proof");
-                println!("undo                    -- Revert last operation");
-                println!();
+                let strings = ReplCommand::iter()
+                    .map(|cmd| (format!("{:10}", cmd.name()), cmd.desc()))
+                    .map(|(str, desc)| (str, desc.map_or("".to_string(), |d| format!("-- {d}"))))
+                    .map(|(str, desc)| format!("{str} {desc}"))
+                    .collect::<Vec<String>>();
 
-                println!("axiom");
-                println!("intro");
-                println!("split");
-                println!("trans <F>");
-                println!("and_left <F>");
-                println!("and_right <F>");
-                println!("keep_left");
-                println!("keep_right");
-                println!("from_or <F \\/ P>");
-                println!("gen <T>");
-                println!("fix_as <T>");
-                println!("consider exists <V>, <F>");
-                println!("rename_as <V>");
-                println!("from_bottom");
-                println!("exfalso <F>");
+                let cols = tools::in_columns(&strings, terminal::size()?.0 as usize);
+                println!("{cols}");
             }
 
 
 
             ReplState::CommandHelp(command, _) => {
-                println!("deducnat - v0.1.0");
-                println!("(F: Formula, T: Term, v: variable)");
+                titleline!();
+                println!("(F, G: Formula, T: Term, v: variable)");
                 println!();
 
                 println!("COMMAND '{}'", command.name().to_uppercase());
