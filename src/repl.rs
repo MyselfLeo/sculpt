@@ -421,6 +421,7 @@ impl Repl {
                     .map(|(i, e)| format!("{i}. {e}"))
                     .collect::<Vec<String>>();
 
+                titleline!();
                 println!("PROOF OF  {}", p.borrow().goal);
                 println!();
                 println!("DEDUCTION STEPS:");

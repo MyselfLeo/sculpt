@@ -42,7 +42,7 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize) -> String {
     };
 
     // Split the elements in 2 columns
-    let nb = vec.len() / 2;
+    let nb = vec.len().div_ceil(2);
     let left_col = &strings[0..nb];
     let right_col = &strings[nb..];
 
@@ -52,7 +52,7 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize) -> String {
         let line = match t {
             (Some(l), Some(r)) => format!("{1:<0$}{3}{2:<0$}", column_length, l, r, " ".repeat(SEP_SIZE)),
             (Some(l), None) => format!("{1:<0$}", column_length, l),
-            (None, Some(r)) => format!("{1:<0$}  {2:<0$}", column_length, "", r),
+            (None, Some(r)) => format!("{1:<0$}{3}{2:<0$}", column_length, "", r, " ".repeat(SEP_SIZE)),
             _ => unreachable!()
         };
 
