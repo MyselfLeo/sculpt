@@ -416,26 +416,38 @@ impl Repl {
 
 
             ReplState::Qed(p, steps) => {
+                let cmd_strs = steps.iter()
+                    .enumerate()
+                    .map(|(i, e)| format!("{i}. {e}"))
+                    .collect::<Vec<String>>();
+
                 println!("PROOF OF  {}", p.borrow().goal);
                 println!();
                 println!("DEDUCTION STEPS:");
-                for s in steps {
-                    println!("{s}");
-                }
+                println!();
+
+                let cols = tools::in_columns(&cmd_strs, terminal::size()?.0 as usize);
+                println!("{cols}");
             }
 
 
 
             ReplState::StepList(p, steps) => {
+                let cmd_strs = steps.iter()
+                    .enumerate()
+                    .map(|(i, e)| format!("{i}. {e}"))
+                    .collect::<Vec<String>>();
+
                 if p.borrow().is_finished() {println!("Goal: {} (finished)", p.borrow().goal)}
                 else {println!("Goal: {}", p.borrow().goal)}
 
                 println!();
 
-                println!("COMMANDS");
-                for s in steps {
-                    println!("{s}");
-                }
+                println!("COMMANDS HISTORY");
+                println!();
+
+                let cols = tools::in_columns(&cmd_strs, terminal::size()?.0 as usize);
+                println!("{cols}");
             }
 
 

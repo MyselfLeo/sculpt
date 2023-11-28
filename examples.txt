@@ -10,6 +10,8 @@ Autres:
 
 
 
+
+
 (forall y, H(y) => M(y)) => H(socrate) => M(socrate)
 
 
@@ -18,6 +20,8 @@ forall x, P(x) => Y(x)
 
 
 (forall x, Athlete(x) => Fort(x)) => (forall x, Intelligent(x) /\ Fort(x) => Carriere(x)) => (Athlete(pierre) /\ Intelligent(pierre)) => Carriere(pierre)
+
+
 
 H(socrate) => (exists x, H(x))
 
