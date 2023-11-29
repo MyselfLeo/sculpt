@@ -50,6 +50,7 @@ impl PartialEq for ReplState {
 }
 
 #[derive(Clone, EnumIter)]
+#[doc(name="test")]
 pub enum ReplCommand {
     Proof(String),
     Help,
