@@ -2,9 +2,9 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use std::collections::HashMap;
 use quote::quote;
-use syn::{parse_macro_input, ItemEnum, Ident, Meta, LitStr};
+use syn::{parse_macro_input, ItemEnum, Ident, LitStr};
 
-#[proc_macro_derive(ReplDoc)]
+#[proc_macro_derive(ReplDoc, attributes(name, desc, schema))]
 pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
 
@@ -14,11 +14,22 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
         let ident = &variant.ident;
         let attrs = &variant.attrs;
 
-        let command_attr = attrs
-            .iter()
-            .find(|e| e.meta.path().is_ident("doc"));
 
-        match command_attr {
+        let attrs = attrs.iter().filter_map(|attr| {
+            let ident = attr.path().get_ident();
+            let ident_str = ident.map(|ident| ident.to_string().as_str());
+            match ident_str {
+                Some("name") => ident,
+                Some("desc") => ident,
+                Some("schema") => ident,
+                _ => None
+           }
+        }).collect::<Vec<_>>();
+
+        todo!()
+
+
+        /*match command_attr {
             Some(Meta::Path(_)) | Some(Meta::NameValue(_)) => { compile_error!("Syntax: #[doc(name=\"name\", ...]") }
             Some(Meta::List(l)) => {
                 l.parse_nested_meta(|attr| {
@@ -37,7 +48,7 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
                 })?;
             }
             _ => {}
-        }
+        }*/
 
         println!("Names: {:?}", command_names);
     }
@@ -46,13 +57,4 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         #input
     };
-}
-
-
-
-
-#[proc_macro_attribute]
-pub fn doc(attrs: TokenStream, item: TokenStream) -> TokenStream {
-    println!("Parsed doc: {:?}", attrs);
-    item
 }
