@@ -1,60 +1,98 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
-use std::collections::HashMap;
-use quote::quote;
-use syn::{parse_macro_input, ItemEnum, Ident, LitStr};
+use std::collections::{BTreeMap, HashMap};
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, Lit, Variant};
+use syn::punctuated::Punctuated;
+use syn::token::Token;
 
-#[proc_macro_derive(ReplDoc, attributes(name, desc, schema))]
+#[proc_macro_derive(ReplDoc, attributes(cmd))]
 pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
+    let enum_name = input.ident;
 
-    let mut command_names: HashMap<Ident, LitStr> = HashMap::new();
+    let mut command_names: Vec<(Variant, LitStr)> = Vec::new();
 
-    for variant in input.variants {
-        let ident = &variant.ident;
-        let attrs = &variant.attrs;
+    for variant in &input.variants {
+        // Query the 'doc' attribute, if existing
+        let attr = variant.attrs.iter()
+            .find(|a| a.meta.path().is_ident("cmd"));
+
+        match attr {
+            None => continue,
+
+            Some(doc_attr) =>  {
+                // Parse args of the doc attribute.
+                let parser = Punctuated::<ExprAssign, Token![,]>::parse_terminated;
+                let doc_args = doc_attr.parse_args_with(parser).unwrap();
+
+                for arg in doc_args {
+                    match arg.left.as_ref() {
+                        Expr::Path(name) => {
+                            let param = name.path.get_ident().unwrap();
+
+                            match param.to_string().as_str() {
+                                "name" => {
+                                    match arg.right.as_ref() {
+                                        Expr::Lit(e) => {
+                                            match &e.lit {
+                                                Lit::Str(value) => {
+                                                    command_names.push((variant.clone(), value.clone()));
+                                                },
+                                                _ => panic!("Nuhu")
+                                            }
+                                        }
+                                        _ => panic!("Nuhu2")
+                                    }
+                                },
 
 
-        let attrs = attrs.iter().filter_map(|attr| {
-            let ident = attr.path().get_ident();
-            let ident_str = ident.map(|ident| ident.to_string().as_str());
-            match ident_str {
-                Some("name") => ident,
-                Some("desc") => ident,
-                Some("schema") => ident,
-                _ => None
-           }
-        }).collect::<Vec<_>>();
 
-        todo!()
+                                "desc" => todo!(),
 
 
-        /*match command_attr {
-            Some(Meta::Path(_)) | Some(Meta::NameValue(_)) => { compile_error!("Syntax: #[doc(name=\"name\", ...]") }
-            Some(Meta::List(l)) => {
-                l.parse_nested_meta(|attr| {
-                   match attr.path.get_ident().map(|ident| ident.to_string().as_str()) {
-                       Some("name") => {
-                           let value = attr.value()?;
-                           let s: LitStr = value.parse()?;
-                           command_names.insert(ident.clone(), s);
-                       }
-                       Some("desc") => {todo!()}
-                       Some("schema") => {todo!()}
-                       _ => { compile_error!("Syntax: #[doc(name=\"name\", ...]") }
-                   };
 
-                    Ok(())
-                })?;
+                                "schema" => todo!(),
+
+
+
+
+                                _ => panic!()
+                            }
+                        }
+                        _ => panic!()
+                    }
+                }
             }
-            _ => {}
-        }*/
+        }
 
-        println!("Names: {:?}", command_names);
+        let _x: Vec<String> = command_names.iter().map(|(_, v)| v.value()).collect();
     }
 
 
-    let expanded = quote! {
-        #input
+    let name_arms: Vec<_> = command_names.iter()
+        .map(|(v, l)| (v.to_token_stream(), l))
+        .map(|(v, l)| {
+            quote! {
+               #v => #l
+            }
+        })
+        .collect();
+
+
+    let nb =  command_names.len();
+
+
+    let name_impl = quote! {
+        impl ReplDoc for #enum_name {
+            fn name(&self) -> String {
+                match self {
+                    #(#name_arms)*,
+                    _ => "#nb"
+                }.to_string()
+            }
+        }
     };
+
+    name_impl.into()
 }

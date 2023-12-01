@@ -15,3 +15,4 @@ crossterm = "0.27.0"
 itertools = { version = "0.11.0", features = [] }
 unicode-segmentation = "1.10.1"
 strum = { version = "0.25", features = ["derive"] }
+deducnat-macro = { path = "deducnat-macro" }

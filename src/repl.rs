@@ -12,6 +12,7 @@ use crate::inductive::Formula;
 use crate::proof::Proof;
 use crate::rule::{Rule, Side};
 use crate::tools;
+use deducnat_macro::ReplDoc;
 
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -49,9 +50,15 @@ impl PartialEq for ReplState {
     }
 }
 
-#[derive(Clone, EnumIter)]
-#[doc(name="test")]
+
+pub trait ReplDoc {
+    fn name(&self) -> String;
+}
+
+
+#[derive(Clone, EnumIter, ReplDoc)]
 pub enum ReplCommand {
+    #[cmd(name = "Proof")]
     Proof(String),
     Help,
     HelpCommand(String),
@@ -230,6 +237,7 @@ impl ReplCommand {
             ReplCommand::Return => "",
         }.to_string()
     }
+    */
 
 
     pub fn usage(&self) -> String {
