@@ -51,37 +51,56 @@ impl PartialEq for ReplState {
 }
 
 
-pub trait ReplDoc {
-    fn name(&self) -> String;
-}
 
 
 #[derive(Clone, EnumIter, ReplDoc)]
 pub enum ReplCommand {
-    #[cmd(name = "Proof")]
+    #[cmd(name="proof", usage="<F>", desc="Start the proving process of F")]
     Proof(String),
+    #[cmd(name="help", desc="Display this information screen")]
     Help,
+    #[cmd(name="help", usage="[command]", desc="Display information about a particular command")]
     HelpCommand(String),
+    #[cmd(name="undo", desc="Revert last command while in proof mode")]
     Undo,
+    #[cmd(name="exit", desc="Close sub-screens (help, list) or go back to main screen")]
     Exit,
+    #[cmd(name="quit", desc="Stop deducnat")]
     Quit,
+    #[cmd(name="list", desc="Display the list of commands executed in proof mode")]
     List,
+    #[cmd(name="qed", desc="Finish the proof (only when no more subgoals)")]
     Qed,
 
+    #[cmd(name="axiom")]
     Axiom,
+    #[cmd(name="intro")]
     Intro,
+    #[cmd(name="trans", usage="<F>")]
     Trans(String),
+    #[cmd(name="split")]
     Split,
+    #[cmd(name="and_left", usage="<F>")]
     AndLeft(String),
+    #[cmd(name="and_right", usage="<F>")]
     AndRight(String),
+    #[cmd(name="keep_left")]
     KeepLeft,
+    #[cmd(name="keep_right")]
     KeepRight,
+    #[cmd(name="from_or", usage="<F1> \\/ <F2>")]
     FromOr(String),
+    #[cmd(name="gen", usage="<T>")]
     Generalize(String),
+    #[cmd(name="fix_as", usage="<T>")]
     FixAs(String),
+    #[cmd(name="consider", usage="exists <v>, <F>")]
     Consider(String),
+    #[cmd(name="rename_as", usage="<v>")]
     RenameAs(String),
+    #[cmd(name="from_bottom", usage="<F>")]
     FromBottom,
+    #[cmd(name="exfalso")]
     ExFalso(String),
 
     // special command
@@ -207,76 +226,9 @@ impl ReplCommand {
     }
 
 
-    pub fn name(&self) -> String {
-        match self {
-            ReplCommand::Proof(_) => "proof",
-            ReplCommand::Help | ReplCommand::HelpCommand(_) => "help",
-            ReplCommand::Undo => "undo",
-            ReplCommand::Exit => "exit",
-            ReplCommand::Quit => "quit",
-            ReplCommand::List => "list",
-
-            ReplCommand::Axiom => "axiom",
-            ReplCommand::Intro => "intro",
-            ReplCommand::Trans(_) => "trans",
-            ReplCommand::Split => "split",
-            ReplCommand::AndLeft(_) => "and_left",
-            ReplCommand::AndRight(_) => "and_right",
-            ReplCommand::KeepLeft => "keep_left",
-            ReplCommand::KeepRight => "keep_right",
-            ReplCommand::FromOr(_) => "from_or",
-            ReplCommand::Generalize(_) => "gen",
-            ReplCommand::FixAs(_) => "fix_as",
-            ReplCommand::Consider(_) => "consider",
-            ReplCommand::RenameAs(_) => "rename_as",
-            ReplCommand::FromBottom => "from_bottom",
-            ReplCommand::ExFalso(_) => "exfalso",
-
-            ReplCommand::Qed => "qed",
-
-            ReplCommand::Return => "",
-        }.to_string()
-    }
-    */
-
-
-    pub fn usage(&self) -> String {
-        let args = match self {
-            ReplCommand::Proof(_) => "<F>",
-            ReplCommand::Trans(_) => "<F>",
-            ReplCommand::AndLeft(_) => "<F>",
-            ReplCommand::AndRight(_) => "<F>",
-
-            ReplCommand::FromOr(_) => "<F1> \\/ <F2>",
-            ReplCommand::Generalize(_) => "<T>",
-            ReplCommand::FixAs(_) => "<T>",
-            ReplCommand::Consider(_) => "exists <v>, <F>",
-            ReplCommand::RenameAs(_) => "<v>",
-            ReplCommand::ExFalso(_) => "<F>",
-            ReplCommand::HelpCommand(_) => "[command]",
-            _ => ""
-        }.to_string();
-
-        format!("{} {}", self.name(), args)
-    }
 
 
 
-    pub fn desc(&self) -> Option<String> {
-        let res = match self {
-            ReplCommand::Proof(_) => "Start the proving process of F",
-            ReplCommand::Qed => "Finish the proof (only when no more subgoals)",
-            ReplCommand::List => "Display the list of commands executed in proof mode",
-            ReplCommand::Undo => "Revert last command while in proof mode",
-            ReplCommand::Quit => "Stop deducnat",
-            ReplCommand::Exit => "Close sub-screens (help, list) or go back to main screen",
-            ReplCommand::Help => "Display this information screen",
-            ReplCommand::HelpCommand(_) => "Display information about a particular command",
-            _ => return None
-        }.to_string();
-
-        Some(res)
-    }
 
 
 
@@ -370,10 +322,16 @@ impl Repl {
                 println!("COMMANDS (more info with 'help [command]')");
                 println!();
 
+
+
                 let strings = ReplCommand::iter()
-                    .map(|cmd| (format!("{:10}", cmd.name()), cmd.desc()))
-                    .map(|(str, desc)| (str, desc.map_or("".to_string(), |d| format!("-- {d}"))))
-                    .map(|(str, desc)| format!("{str} {desc}"))
+                    .map(|cmd| {
+                        (
+                            cmd.name().map_or("??".to_string(), |x| x),
+                            cmd.desc().map_or("".to_string(), |d| format!("-- {d}"))
+                        )
+                    })
+                    .map(|(name, desc)| (format!("{:10} {}", name, desc)))
                     .collect::<Vec<String>>();
 
                 let cols = tools::in_columns(&strings, terminal::size()?.0 as usize);
@@ -387,12 +345,18 @@ impl Repl {
                 println!("(F, G: Formula, T: Term, v: variable)");
                 println!();
 
-                println!("COMMAND '{}'", command.name().to_uppercase());
+                if let Some(name) = command.name() {
+                    println!("COMMAND '{}'", name.to_uppercase());
+                }
+
                 if let Some(s) = command.desc() {
                     println!("{s}");
                 }
                 println!();
-                println!("USAGE: {}", command.usage());
+
+                if let Some(usg) = command.usage() {
+                    println!("USAGE: {usg}");
+                }
 
                 if let Some(schema) = command.schema() {
                     println!();
