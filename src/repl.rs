@@ -249,6 +249,34 @@ impl ReplCommand {
         let ante_str: Vec<_> = ante.iter().map(|s| s.to_string()).collect();
         Some((ante_str, cons.to_string()))
     }
+
+
+
+
+
+    // Return a command based on the rule it can generate.
+    // Does not take the rule parameters into accounts.
+    /*pub fn from_rule(rule: Rule) -> Vec<ReplCommand> {
+        match rule {
+            Rule::Axiom => vec![ReplCommand::Axiom],
+            Rule::Intro => vec![ReplCommand::Intro],
+            Rule::Intros => vec![ReplCommand::Intros],
+            Rule::Trans(s) => vec![ReplCommand::Trans(s)],
+            Rule::SplitAnd => vec![ReplCommand::Split],
+            Rule::And(_, _) => vec![ReplCommand::AndRight()]
+            Rule::Keep(_) => {}
+            Rule::FromOr(_) => {}
+            Rule::Generalize(_) => {}
+            Rule::FixAs(_) => {}
+            Rule::Consider(_) => {}
+            Rule::RenameAs(_) => {}
+            Rule::FromBottom => {}
+            Rule::ExFalso(_) => {}
+        }
+
+
+        todo!()
+    }*/
 }
 
 
