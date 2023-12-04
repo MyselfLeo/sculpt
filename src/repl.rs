@@ -111,32 +111,23 @@ impl Display for ReplCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReplCommand::Proof(s) => write!(f, "proof {s}"),
-            ReplCommand::Axiom => write!(f, "axiom"),
-            ReplCommand::Intro => write!(f, "intro"),
             ReplCommand::Trans(s) => write!(f, "trans {s}"),
-            ReplCommand::Split => write!(f, "split"),
             ReplCommand::AndLeft(s) => write!(f, "and_left {s}"),
             ReplCommand::AndRight(s) => write!(f, "and_right {s}"),
-            ReplCommand::KeepLeft => write!(f, "keep_left"),
-            ReplCommand::KeepRight => write!(f, "keep_right"),
             ReplCommand::FromOr(s) => write!(f, "from_or {s}"),
 
             ReplCommand::Generalize(s) => write!(f, "gen {s}"),
             ReplCommand::FixAs(s) => write!(f, "fix_as {s}"),
             ReplCommand::Consider(s) => write!(f, "consider {s}"),
             ReplCommand::RenameAs(s) => write!(f, "rename_as {s}"),
-
-            ReplCommand::FromBottom => write!(f, "from_bottom"),
             ReplCommand::ExFalso(s) => write!(f, "exfalso {s}"),
-
-            ReplCommand::Qed => write!(f, "qed"),
-            ReplCommand::Quit => write!(f, "quit"),
-            ReplCommand::Exit => write!(f, "exit"),
-            ReplCommand::Help => write!(f, "help"),
             ReplCommand::HelpCommand(s) => write!(f, "help {s}"),
-            ReplCommand::List => write!(f, "list"),
-            ReplCommand::Undo => write!(f, "undo"),
-            ReplCommand::Return => write!(f, "")
+            ReplCommand::Return => write!(f, ""),
+
+            e => match e.name() {
+                Some(n) => write!(f, "{n}"),
+                None => Ok(()),
+            }
         }
     }
 }
