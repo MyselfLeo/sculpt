@@ -1,0 +1,69 @@
+use crate::inductive::{Term, Formula};
+
+grammar;
+
+// Comma separated elements
+Comma<T>: Vec<T> = { // (1)
+    <mut v:(<T> ",")*> <e:T?> => match e { // (2)
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+
+Terms = Comma<Term>;
+Formulas = Comma<Formula>;
+
+
+pub Variable: String = {
+    <s:r"[a-z]'*"> => s.to_string()
+}
+
+
+
+pub Term: Box<Term> = {
+    <v:Variable> => Box::new(Term::Variable(v.to_string())),
+    <n:r"[a-z][a-zA-Z0-9]+'*"> => Box::new(Term::Function(n.to_string(), vec![])),
+
+    <n:Variable> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v)),
+    <n:r"[a-z][a-zA-Z0-9]+'*"> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v))
+}
+
+
+
+pub Formula: Box<Formula> = {
+    <f:Implication> => f,
+    "exists" <v:Variable> "," <f:Formula> => Box::new(Formula::Exists(v.to_string(), f)),
+    "forall" <v:Variable> "," <f:Formula> => Box::new(Formula::Forall(v.to_string(), f)),
+}
+
+
+PrimitiveFormula: Box<Formula> = {
+    <n:r"[A-Z][a-zA-Z0-9]*'*"> => Box::new(Formula::Relation(n.to_string(), vec![])),
+    <n:r"[A-Z][a-zA-Z0-9]*'*"> "(" <v:Terms> ")" => Box::new(Formula::Relation(n.to_string(), v)),
+    <f:Parenthesized> => f,
+    "~" <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
+    "falsum" => Box::new(Formula::Falsum),
+}
+
+
+Parenthesized: Box<Formula> = {
+    "(" <f:Formula> ")" => f
+}
+
+
+
+Implication: Box<Formula> = {
+    <f1:BoolOp> "=>" <f2:Implication> => Box::new(Formula::Implies(f1, f2)),
+    <f:BoolOp> => f,
+}
+
+
+BoolOp: Box<Formula> = {
+    <f1:BoolOp> "/\\" <f2:PrimitiveFormula> => Box::new(Formula::And(f1, f2)),
+    <f1:BoolOp> "\\/" <f2:PrimitiveFormula> => Box::new(Formula::Or(f1, f2)),
+    <f:PrimitiveFormula> => f
+}
