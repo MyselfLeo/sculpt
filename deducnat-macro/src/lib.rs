@@ -1,12 +1,11 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use std::collections::HashMap;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, Lit, Variant};
 use syn::punctuated::Punctuated;
 
 
-// 2 am witchcraft
 #[proc_macro_derive(ReplDoc, attributes(cmd))]
 pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
@@ -62,8 +61,9 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
         }
     }).collect();
 
+    let trait_name = format_ident!("{enum_name}ReplDoc");
     let trait_def = quote! {
-        trait ReplDoc {
+        trait #trait_name {
             #(#function_signs);*;
         }
     };
@@ -99,13 +99,15 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     let result = quote! {
         #trait_def
 
-        impl ReplDoc for #enum_name {
+        impl #trait_name for #enum_name {
             #(#functions)*
         }
     };
 
     result.into()
 }
+
+
 
 
 
@@ -122,3 +124,24 @@ fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
         quote! { #name ( #(#underscores),* ) }
     }
 }
+
+
+
+
+#[proc_macro_derive(EnumType)]
+pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemEnum);
+    let enum_name = input.ident;
+    let new_enum_name = format_ident!("{enum_name}Type");
+
+
+}
+
+
+
+
+
+
+
+
+

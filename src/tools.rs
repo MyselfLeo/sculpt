@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::iter::zip;
 
 /// Return the formatted vec, putting sep between each values
 ///
