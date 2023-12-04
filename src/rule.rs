@@ -23,6 +23,7 @@ impl Display for Side {
 pub enum Rule {
     Axiom,
     Intro,
+    Intros,
     Trans(String),
     SplitAnd,
     And(Side, String),
@@ -43,6 +44,7 @@ impl Display for Rule {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Rule::Intro => write!(f, "Intro"),
+            Rule::Intros => write!(f, "Intros"),
             Rule::SplitAnd => write!(f, "SplitAnd"),
             Rule::Trans(s) => write!(f, "Apply {s}"),
             Rule::Axiom => write!(f, "Axiom"),
@@ -108,6 +110,18 @@ impl Rule {
 
                     _ => Err(err_goal_form!("F => P or forall V, F"))
                 }
+            }
+
+
+
+            Rule::Intros => {
+                let mut seqs = vec![sequent.clone()]; // lol
+                while let Ok(v) = Rule::Intro.apply(seqs.first().unwrap()) {
+                    seqs = v;
+                    if seqs.is_empty() {break;}
+                }
+                
+                Ok(seqs)
             }
 
 

@@ -76,6 +76,8 @@ pub enum ReplCommand {
     Axiom,
     #[cmd(name="intro")]
     Intro,
+    #[cmd(name="intros", desc="Apply multiple 'intro' rules, until it's not longer possible")]
+    Intros,
     #[cmd(name="trans", usage="<F>")]
     Trans(String),
     #[cmd(name="split")]
@@ -172,6 +174,7 @@ impl ReplCommand {
 
             ("axiom", "") => ReplCommand::Axiom,
             ("intro", "") => ReplCommand::Intro,
+            ("intros", "") => ReplCommand::Intros,
 
             ("split", "") => ReplCommand::Split,
 
@@ -324,7 +327,7 @@ impl Repl {
                         }
                         else {None}
                     })
-                    .map(|(name, desc)| (format!("{:10} {}", name, desc)))
+                    .map(|(name, desc)| format!("{:10} {}", name, desc))
                     .collect::<Vec<String>>();
 
                 let cols = tools::in_columns(&strings, terminal::size()?.0 as usize);
@@ -485,6 +488,7 @@ impl Repl {
                 match subcommand {
                     ReplCommand::Axiom => apply_rule!(Rule::Axiom),
                     ReplCommand::Intro => apply_rule!(Rule::Intro),
+                    ReplCommand::Intros => apply_rule!(Rule::Intros),
                     ReplCommand::Trans(s) => apply_rule!(Rule::Trans(s.to_string())),
                     ReplCommand::Split => apply_rule!(Rule::SplitAnd),
                     ReplCommand::AndLeft(s) => apply_rule!(Rule::And(Side::Left, s.to_string())),
