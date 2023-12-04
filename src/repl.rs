@@ -316,11 +316,13 @@ impl Repl {
 
 
                 let strings = ReplCommand::iter()
-                    .map(|cmd| {
-                        (
-                            cmd.name().map_or("??".to_string(), |x| x),
-                            cmd.desc().map_or("".to_string(), |d| format!("-- {d}"))
-                        )
+                    .filter_map(|cmd| {
+                        let desc_fmt = |d| format!("-- {d}");
+                        let desc = cmd.desc().map_or("".to_string(), desc_fmt);
+                        if let Some(n) = cmd.name() {
+                            Some((n, desc))
+                        }
+                        else {None}
                     })
                     .map(|(name, desc)| (format!("{:10} {}", name, desc)))
                     .collect::<Vec<String>>();
