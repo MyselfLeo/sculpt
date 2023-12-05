@@ -114,6 +114,30 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
 
 
 
+
+
+
+#[proc_macro_derive(EnumType)]
+pub fn derive_enum_type(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemEnum);
+    let enum_name = input.ident;
+    let new_enum_name = format_ident!("{enum_name}Type");
+
+    let variants = input.variants.iter()
+        .map(|v| v.ident.clone())
+        .collect::<Vec<_>>();
+
+    quote! {
+        pub enum #new_enum_name {
+            #(#variants),*
+        }
+    }.into()
+}
+
+
+
+
+
 fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
     let name = &variant.ident;
     if variant.fields.len() == 0 {
@@ -124,19 +148,6 @@ fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
         quote! { #name ( #(#underscores),* ) }
     }
 }
-
-
-
-
-#[proc_macro_derive(EnumType)]
-pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as ItemEnum);
-    let enum_name = input.ident;
-    let new_enum_name = format_ident!("{enum_name}Type");
-
-
-}
-
 
 
 
