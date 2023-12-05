@@ -10,9 +10,7 @@ Natural deduction helper
 
 2. Apply natural deduction rules. The full list of commands can be found using the `help` command.
 ```
-> intro
-> intro
-> intro
+> intros
 > from_or J \/ Z
 > axiom
 > trans A /\ J
