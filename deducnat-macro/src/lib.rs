@@ -121,17 +121,66 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
 pub fn derive_enum_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
     let enum_name = input.ident;
-    let new_enum_name = format_ident!("{enum_name}Type");
+    let new_enum_name = format_ident!("{}Type", enum_name);
 
-    let variants = input.variants.iter()
-        .map(|v| v.ident.clone())
+
+    // match-pattern (ex: Foo::Bar(_, _)) & variant ident (ex: Bar)
+    let type_assoc = input.variants.iter()
+        .map(|v| (no_arg_pattern(v), v.ident.clone()))
         .collect::<Vec<_>>();
 
-    quote! {
+
+
+    let idents = type_assoc.iter()
+        .map(|(_, t)| t.clone())
+        .collect::<Vec<_>>();
+
+    let enum_def = quote! {
         pub enum #new_enum_name {
-            #(#variants),*
+            #(#idents),*
         }
-    }.into()
+    };
+
+    let trait_name = format_ident!("{enum_name}Typed");
+    let trait_def = quote! {
+        pub trait #trait_name {
+            fn get_type(&self) -> #new_enum_name;
+        }
+    };
+
+    let assocs = type_assoc.iter()
+        .map(|(pat, i)| {
+            quote! {
+                #enum_name::#pat => #new_enum_name::#i
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let get_type_def = quote! {
+        fn get_type(&self) -> #new_enum_name {
+            match self {
+                #(#assocs),*,
+            }
+        }
+    };
+
+
+    let enum_impl = quote! {
+        impl #trait_name for #enum_name {
+            #get_type_def
+        }
+    };
+
+
+    let res = quote! {
+        #enum_def
+
+        #trait_def
+
+        #enum_impl
+    };
+
+    res.into()
 }
 
 
