@@ -10,7 +10,7 @@ use strum::{EnumIter, IntoEnumIterator};
 use unicode_segmentation::UnicodeSegmentation;
 use crate::inductive::Formula;
 use crate::proof::Proof;
-use crate::rule::{Rule, Side};
+use crate::rule::{Rule, RuleType, Side};
 use crate::tools;
 use deducnat_macro::{EnumType, ReplDoc};
 
@@ -249,34 +249,30 @@ impl ReplCommand {
         let ante_str: Vec<_> = ante.iter().map(|s| s.to_string()).collect();
         Some((ante_str, cons.to_string()))
     }
+}
 
 
 
-
-
-    // Return a command based on the rule it can generate.
-    // Does not take the rule parameters into accounts.
-    /*pub fn from_rule(rule: Rule) -> Vec<ReplCommand> {
+impl ReplCommandType {
+    // Return a list of command type based on the rule type it can generate
+    pub fn from_rule(rule: RuleType) -> Vec<ReplCommandType> {
         match rule {
-            Rule::Axiom => vec![ReplCommand::Axiom],
-            Rule::Intro => vec![ReplCommand::Intro],
-            Rule::Intros => vec![ReplCommand::Intros],
-            Rule::Trans(s) => vec![ReplCommand::Trans(s)],
-            Rule::SplitAnd => vec![ReplCommand::Split],
-            Rule::And(_, _) => vec![ReplCommand::AndRight()]
-            Rule::Keep(_) => {}
-            Rule::FromOr(_) => {}
-            Rule::Generalize(_) => {}
-            Rule::FixAs(_) => {}
-            Rule::Consider(_) => {}
-            Rule::RenameAs(_) => {}
-            Rule::FromBottom => {}
-            Rule::ExFalso(_) => {}
+            RuleType::Axiom => vec![ReplCommandType::Axiom],
+            RuleType::Intro => vec![ReplCommandType::Intro],
+            RuleType::Intros => vec![ReplCommandType::Intros],
+            RuleType::Trans => vec![ReplCommandType::Trans],
+            RuleType::SplitAnd => vec![ReplCommandType::Split],
+            RuleType::And => vec![ReplCommandType::AndRight, ReplCommandType::AndLeft],
+            RuleType::Keep => vec![ReplCommandType::KeepRight, ReplCommandType::KeepLeft],
+            RuleType::FromOr => vec![ReplCommandType::FromOr],
+            RuleType::Generalize => vec![ReplCommandType::Generalize],
+            RuleType::FixAs => vec![ReplCommandType::FixAs],
+            RuleType::Consider => vec![ReplCommandType::Consider],
+            RuleType::RenameAs => vec![ReplCommandType::RenameAs],
+            RuleType::FromBottom => vec![ReplCommandType::FromBottom],
+            RuleType::ExFalso => vec![ReplCommandType::ExFalso],
         }
-
-
-        todo!()
-    }*/
+    }
 }
 
 

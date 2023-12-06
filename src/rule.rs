@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use deducnat_macro::EnumType;
 use crate::parser;
 use crate::sequent::Sequent;
 use crate::inductive::{Formula, Term};
@@ -20,6 +21,7 @@ impl Display for Side {
 }
 
 
+#[derive(EnumType)]
 pub enum Rule {
     Axiom,
     Intro,
