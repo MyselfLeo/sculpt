@@ -6,7 +6,7 @@ use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, L
 use syn::punctuated::Punctuated;
 
 
-#[proc_macro_derive(ReplDoc, attributes(cmd))]
+#[proc_macro_derive(EnumDoc, attributes(cmd))]
 pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemEnum);
     let enum_name = input.ident;
@@ -52,6 +52,9 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
             }
         }
     }
+
+    // Nothing to document
+    if docs.len() == 0 { return quote! {}.into()}
 
 
 
@@ -141,9 +144,9 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
         }
     };
 
-    let trait_name = format_ident!("{enum_name}Typed");
-    let trait_def = quote! {
-        pub trait #trait_name {
+    let type_trait_name = format_ident!("{enum_name}Typed");
+    let type_trait_def = quote! {
+        pub trait #type_trait_name {
             fn get_type(&self) -> #new_enum_name;
         }
     };
@@ -165,19 +168,53 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
     };
 
 
+    let default_trait_name = format_ident!("{new_enum_name}Default");
+    let default_trait_def = quote! {
+        pub trait #default_trait_name {
+            fn get_default(&self) -> #enum_name;
+        }
+    };
+
+    let default_assocs = input.variants.iter()
+        .map(|v| (v.ident.clone(), default_args(v)))
+        .map(|(i, dft)| {
+            quote! {
+                #new_enum_name::#i => #enum_name::#dft
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let get_default_def = quote! {
+        fn get_default(&self) -> #enum_name {
+            match self {
+                #(#default_assocs),*,
+            }
+        }
+    };
+
+
     let enum_impl = quote! {
-        impl #trait_name for #enum_name {
+        impl #type_trait_name for #enum_name {
             #get_type_def
         }
     };
+
+    let type_impl = quote! {
+        impl #default_trait_name for #new_enum_name {
+            #get_default_def
+        }
+    };
+
 
 
     let res = quote! {
         #enum_def
 
-        #trait_def
-
+        #type_trait_def
         #enum_impl
+
+        #default_trait_def
+        #type_impl
     };
 
     res.into()
@@ -199,7 +236,28 @@ fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
 }
 
 
+fn default_args(variant: &Variant) -> proc_macro2::TokenStream {
+    let name = &variant.ident;
+    if variant.fields.len() == 0 {
+        quote! { #name }
+    }
+    else {
+        let defaults = variant.fields.iter()
+            .map(|f| {
+                f.ty.clone()
+            })
+            .map(|t| {
+               quote! {
+                   #t::default()
+               }
+            })
+            .collect::<Vec<_>>();
 
+        quote! {
+            #name(#(#defaults),*)
+        }
+    }
+}
 
 
 

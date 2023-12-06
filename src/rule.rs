@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use strum::EnumIter;
 use deducnat_macro::EnumType;
 use crate::parser;
 use crate::sequent::Sequent;
@@ -20,8 +21,14 @@ impl Display for Side {
     }
 }
 
+impl Default for Side {
+    fn default() -> Self {
+        Self::Left
+    }
+}
 
-#[derive(EnumType)]
+
+#[derive(EnumType, EnumIter)]
 pub enum Rule {
     Axiom,
     Intro,
