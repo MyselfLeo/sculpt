@@ -28,7 +28,7 @@ impl Default for Side {
 }
 
 
-#[derive(EnumType, EnumIter)]
+#[derive(EnumType)]
 pub enum Rule {
     Axiom,
     Intro,

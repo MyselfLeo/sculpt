@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use crate::inductive::Formula;
-use crate::rule::Rule;
+use crate::rule::{Rule, RuleType};
 use crate::sequent::Sequent;
 
 
@@ -47,6 +47,12 @@ impl Proof {
         self.step += 1;
 
         Ok(())
+    }
+
+
+
+    pub fn get_applicable_rules(&self) -> Option<Vec<RuleType>> {
+        Some(self.current_goal.clone()?.get_applicable_rules())
     }
 
 

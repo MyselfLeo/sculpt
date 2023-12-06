@@ -10,7 +10,7 @@ use strum::{EnumIter, IntoEnumIterator};
 use unicode_segmentation::UnicodeSegmentation;
 use crate::inductive::Formula;
 use crate::proof::Proof;
-use crate::rule::{Rule, RuleType, Side};
+use crate::rule::{Rule, RuleType, RuleTypeDefault, Side};
 use crate::tools;
 use deducnat_macro::{EnumType, EnumDoc};
 
@@ -254,7 +254,7 @@ impl ReplCommand {
 
 impl ReplCommandType {
     // Return a list of command type based on the rule type it can generate
-    pub fn from_rule(rule: RuleType) -> Vec<ReplCommandType> {
+    pub fn from_rule(rule: &RuleType) -> Vec<ReplCommandType> {
         match rule {
             RuleType::Axiom => vec![ReplCommandType::Axiom],
             RuleType::Intro => vec![ReplCommandType::Intro],
@@ -447,12 +447,32 @@ impl Repl {
             ReplState::Quitting => {}
         }
 
+        let applicable_rules = if let ReplState::Proving(p, _) = &self.state {
+            match p.borrow().get_applicable_rules() {
+                None => None,
+                Some(l) => {
+                    let res = l.iter()
+                        .map(|rt| ReplCommandType::from_rule(rt))
+                        .flatten()
+                        .map(|x| x.get_default().name().unwrap_or("".to_string()))
+                        .collect();
+
+                    Some(res)
+                }
+            }
+        }
+        else { None };
+
         // Error msg & command prompt
         let final_row = terminal::window_size()?.rows;
 
         if let Some(e) = &self.last_error {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Error: {e}");
+        }
+        else if let Some(rules) = applicable_rules {
+            execute!(io::stdout(), MoveTo(0, final_row-2))?;
+            print!("Possible commands: {}", tools::list_str(&rules, ", "));
         }
 
         execute!(io::stdout(), MoveTo(0, final_row-1))?;
