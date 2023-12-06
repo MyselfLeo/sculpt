@@ -77,50 +77,6 @@ macro_rules! err_goal_form {
 
 
 impl Rule {
-    pub fn is_applicable(&self, sequent: &Sequent) -> bool {
-        match self {
-            Rule::Axiom => {
-                sequent.antecedents.contains(&sequent.consequent)
-            }
-            Rule::Intro | Rule::Intros => {
-                if let &Formula::Implies(_, _) = &sequent.consequent.as_ref() { true }
-                else if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
-            Rule::Trans(_) => true,
-            Rule::SplitAnd => {
-                if let &Formula::And(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
-            Rule::And(_, _) => true,
-            Rule::Keep(_) => {
-                if let &Formula::Or(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
-            Rule::FromOr(_) => true,
-            Rule::Generalize(_) => true,
-            Rule::FixAs(_) => {
-                if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
-            Rule::Consider(_) => true,
-            Rule::RenameAs(_) => {
-                if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
-                else if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
-            Rule::FromBottom => true,
-            Rule::ExFalso(_) => {
-                if let &Formula::Falsum = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
-        }
-    }
-
-
-
-
-
     pub fn apply(&self, sequent: &Sequent) -> Result<Vec<Sequent>, String> {
 
         match self {
@@ -425,6 +381,54 @@ impl Rule {
                     },
                     _ => Err(err_goal_form!("falsum"))
                 }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+impl RuleType {
+    pub fn is_applicable(&self, sequent: &Sequent) -> bool {
+        match self {
+            RuleType::Axiom => {
+                sequent.antecedents.contains(&sequent.consequent)
+            }
+            RuleType::Intro | RuleType::Intros => {
+                if let &Formula::Implies(_, _) = &sequent.consequent.as_ref() { true }
+                else if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
+                else { false }
+            }
+            RuleType::Trans => true,
+            RuleType::SplitAnd => {
+                if let &Formula::And(_, _) = &sequent.consequent.as_ref() { true }
+                else { false }
+            }
+            RuleType::And => true,
+            RuleType::Keep => {
+                if let &Formula::Or(_, _) = &sequent.consequent.as_ref() { true }
+                else { false }
+            }
+            RuleType::FromOr => true,
+            RuleType::Generalize => true,
+            RuleType::FixAs => {
+                if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
+                else { false }
+            }
+            RuleType::Consider => true,
+            RuleType::RenameAs => {
+                if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
+                else if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
+                else { false }
+            }
+            RuleType::FromBottom => true,
+            RuleType::ExFalso=> {
+                if let &Formula::Falsum = &sequent.consequent.as_ref() { true }
+                else { false }
             }
         }
     }
