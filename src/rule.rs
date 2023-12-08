@@ -375,7 +375,7 @@ impl Rule {
                         let (true_prop, false_prop) = {
                             match *prop {
                                 Formula::Not(ref ff) => (ff.clone(), prop.clone()),
-                                o=> (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
+                                o => (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
                             }
                         };
         
