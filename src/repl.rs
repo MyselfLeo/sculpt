@@ -447,11 +447,15 @@ impl Repl {
             ReplState::Quitting => {}
         }
 
+        // Those are always applicable, so it's unnecessary to display them (for now)
+        const IGNORED_RULES: [RuleType; 6] = [RuleType::Trans, RuleType::And, RuleType::FromOr, RuleType::Generalize, RuleType::Consider, RuleType::FromBottom];
+
         let applicable_rules = if let ReplState::Proving(p, _) = &self.state {
             match p.borrow().get_applicable_rules() {
                 None => None,
                 Some(l) => {
                     let res = l.iter()
+                        .filter(|r| !IGNORED_RULES.contains(r))
                         .map(|rt| ReplCommandType::from_rule(rt))
                         .flatten()
                         .map(|x| x.get_default().name().unwrap_or("".to_string()))
@@ -472,7 +476,7 @@ impl Repl {
         }
         else if let Some(rules) = applicable_rules {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
-            print!("Possible commands: {}", tools::list_str(&rules, ", "));
+            print!("Suggestions: {}", tools::list_str(&rules, ", "));
         }
 
         execute!(io::stdout(), MoveTo(0, final_row-1))?;

@@ -410,33 +410,28 @@ impl RuleType {
                 else if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
                 else { false }
             }
-            RuleType::Trans => true,
             RuleType::SplitAnd => {
                 if let &Formula::And(_, _) = &sequent.consequent.as_ref() { true }
                 else { false }
             }
-            RuleType::And => true,
             RuleType::Keep => {
                 if let &Formula::Or(_, _) = &sequent.consequent.as_ref() { true }
                 else { false }
             }
-            RuleType::FromOr => true,
-            RuleType::Generalize => true,
             RuleType::FixAs => {
                 if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
                 else { false }
             }
-            RuleType::Consider => true,
             RuleType::RenameAs => {
                 if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
                 else if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
                 else { false }
             }
-            RuleType::FromBottom => true,
             RuleType::ExFalso=> {
                 if let &Formula::Falsum = &sequent.consequent.as_ref() { true }
                 else { false }
             }
+            _ => true
         }
     }
 }
