@@ -139,7 +139,7 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
         .collect::<Vec<_>>();
 
     let enum_def = quote! {
-        #[derive(EnumIter)]
+        #[derive(EnumIter, PartialEq, PartialOrd, Eq, Ord)]
         pub enum #new_enum_name {
             #(#idents),*
         }
