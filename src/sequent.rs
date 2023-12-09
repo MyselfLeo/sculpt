@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use strum::IntoEnumIterator;
 
 use crate::inductive::Formula;
 
