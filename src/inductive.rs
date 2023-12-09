@@ -1,4 +1,6 @@
 use std::fmt::{Display, Formatter};
+use deducnat_macro::EnumType;
+use strum::EnumIter;
 
 use crate::{tools, parser};
 
@@ -85,7 +87,7 @@ impl Term {
 
 
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, EnumType)]
 pub enum Formula {
     Falsum,
     Relation(String, Vec<Box<Term>>),

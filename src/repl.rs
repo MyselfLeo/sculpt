@@ -12,7 +12,7 @@ use crate::inductive::Formula;
 use crate::proof::Proof;
 use crate::rule::{Rule, RuleType, Side};
 use crate::tools;
-use deducnat_macro::{EnumType, EnumDoc};
+use deducnat_macro::{EnumType, EnumDoc, EnumTypeDefault};
 
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -52,7 +52,7 @@ impl PartialEq for ReplState {
 
 
 
-#[derive(Clone, EnumIter, EnumDoc, EnumType)]
+#[derive(Clone, EnumIter, EnumDoc, EnumType, EnumTypeDefault)]
 pub enum ReplCommand {
     #[cmd(name="proof", usage="<F>", desc="Start the proving process of F")]
     Proof(String),
@@ -222,9 +222,6 @@ impl ReplCommand {
 
 
 
-
-
-
     pub fn schema(&self) -> Option<(Vec<String>, String)> {
         let (ante, cons) = match self {
             ReplCommand::Axiom => (vec![""], "Γ, F ⊢ F"),
@@ -248,28 +245,28 @@ impl ReplCommand {
         let ante_str: Vec<_> = ante.iter().map(|s| s.to_string()).collect();
         Some((ante_str, cons.to_string()))
     }
-}
 
 
 
-impl ReplCommandType {
-    // Return a list of command type based on the rule type it can generate
-    pub fn from_rule(rule: &RuleType) -> Vec<ReplCommandType> {
+    /// Return the command used to apply the given rule
+    pub fn from_rule(rule: &Rule) -> ReplCommand {
         match rule {
-            RuleType::Axiom => vec![ReplCommandType::Axiom],
-            RuleType::Intro => vec![ReplCommandType::Intro],
-            RuleType::Intros => vec![ReplCommandType::Intros],
-            RuleType::Trans => vec![ReplCommandType::Trans],
-            RuleType::SplitAnd => vec![ReplCommandType::Split],
-            RuleType::And => vec![ReplCommandType::AndRight, ReplCommandType::AndLeft],
-            RuleType::Keep => vec![ReplCommandType::KeepRight, ReplCommandType::KeepLeft],
-            RuleType::FromOr => vec![ReplCommandType::FromOr],
-            RuleType::Generalize => vec![ReplCommandType::Generalize],
-            RuleType::FixAs => vec![ReplCommandType::FixAs],
-            RuleType::Consider => vec![ReplCommandType::Consider],
-            RuleType::RenameAs => vec![ReplCommandType::RenameAs],
-            RuleType::FromBottom => vec![ReplCommandType::FromBottom],
-            RuleType::ExFalso => vec![ReplCommandType::ExFalso],
+            Rule::Axiom => ReplCommand::Axiom,
+            Rule::Intro => ReplCommand::Intro,
+            Rule::Intros => ReplCommand::Intros,
+            Rule::Trans(t) => ReplCommand::Trans(t.clone()),
+            Rule::SplitAnd => ReplCommand::Split,
+            Rule::And(Side::Left, t) => ReplCommand::AndLeft(t.clone()),
+            Rule::And(Side::Right, t) => ReplCommand::AndRight(t.clone()),
+            Rule::Keep(Side::Left) => ReplCommand::KeepLeft,
+            Rule::Keep(Side::Right) => ReplCommand::KeepRight,
+            Rule::FromOr(t) => ReplCommand::FromOr(t.clone()),
+            Rule::Generalize(t) => ReplCommand::Generalize(t.clone()),
+            Rule::FixAs(t) => ReplCommand::FixAs(t.clone()),
+            Rule::Consider(t) => ReplCommand::Consider(t.clone()),
+            Rule::RenameAs(t) => ReplCommand::RenameAs(t.clone()),
+            Rule::FromBottom => ReplCommand::FromBottom,
+            Rule::ExFalso(t) => ReplCommand::ExFalso(t.clone())
         }
     }
 }
@@ -450,20 +447,10 @@ impl Repl {
         // Those are always applicable, so it's unnecessary to display them (for now)
         const IGNORED_RULES: [RuleType; 6] = [RuleType::Trans, RuleType::And, RuleType::FromOr, RuleType::Generalize, RuleType::Consider, RuleType::FromBottom];
 
-        let applicable_rules = if let ReplState::Proving(p, _) = &self.state {
-            match p.borrow().get_applicable_rules() {
-                None => None,
-                Some(l) => {
-                    let res = l.iter()
-                        .filter(|r| !IGNORED_RULES.contains(r))
-                        .map(|rt| ReplCommandType::from_rule(rt))
-                        .flatten()
-                        .map(|x| x.get_default().name().unwrap_or("".to_string()))
-                        .collect();
-
-                    Some(res)
-                }
-            }
+        let suggestions = if let ReplState::Proving(p, _) = &self.state {
+            p.borrow().get_suggestions().map(|v| {
+                v.iter().map(|r| ReplCommand::from_rule(r)).collect()
+            })
         }
         else { None };
 
@@ -474,7 +461,7 @@ impl Repl {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Error: {e}");
         }
-        else if let Some(rules) = applicable_rules {
+        else if let Some(rules) = suggestions {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Suggestions: {}", tools::list_str(&rules, ", "));
         }

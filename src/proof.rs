@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
-use crate::inductive::Formula;
+use crate::inductive::{Formula, FormulaType, FormulaTyped};
+use crate::repl::ReplCommand;
 use crate::rule::{Rule, RuleType};
 use crate::sequent::Sequent;
 
@@ -51,9 +52,40 @@ impl Proof {
 
 
 
-    pub fn get_applicable_rules(&self) -> Option<Vec<RuleType>> {
-        Some(self.current_goal.clone()?.get_applicable_rules())
+
+    pub fn get_suggestions(&self) -> Option<Vec<Rule>> {
+        match &self.current_goal {
+            None => None,
+            Some(e) => {
+                let mut res = vec![];
+
+
+                // Suggestion 1: if the consequent is in the antecedents, use axiom
+                if e.antecedents.contains(&e.consequent) {res.push(Rule::Axiom);}
+
+
+                // Suggestion 2: Intro when possible
+                if [FormulaType::Implies, FormulaType::Forall].contains(&e.consequent.get_type()) {
+                    res.push(Rule::Intro);
+                }
+
+
+                // Suggestion 3: Consume \/ if in the antecedents
+                res.append(&mut
+                    e.antecedents.iter()
+                        .filter(|f| f.get_type() == FormulaType::Or)
+                        .map(|f| Rule::FromOr(f.to_string()))
+                        .collect::<Vec<_>>()
+                );
+
+
+                Some(res)
+            }
+        }
     }
+
+
+
 
 
     pub fn print(&self) {

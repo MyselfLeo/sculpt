@@ -2,7 +2,6 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 
 use crate::inductive::Formula;
-use crate::rule::RuleType;
 
 
 #[derive(Clone)]
@@ -23,14 +22,6 @@ impl Sequent {
         self.antecedents.iter()
             .map(|t| t.domain())
             .flatten()
-            .collect()
-    }
-
-
-    /// Return a list of rules that can be applied to this sequent
-    pub fn get_applicable_rules(&self) -> Vec<RuleType> {
-        RuleType::iter()
-            .filter(|rt| rt.is_applicable(&self))
             .collect()
     }
 }

@@ -167,7 +167,36 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
             }
         }
     };
+    
 
+    let enum_impl = quote! {
+        impl #type_trait_name for #enum_name {
+            #get_type_def
+        }
+    };
+
+
+
+    let res = quote! {
+        #enum_def
+
+        #type_trait_def
+        #enum_impl
+    };
+
+    res.into()
+}
+
+
+
+
+
+
+#[proc_macro_derive(EnumTypeDefault)]
+pub fn derive_enum_type_default(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemEnum);
+    let enum_name = input.ident;
+    let new_enum_name = format_ident!("{}Type", enum_name);
 
     let default_trait_name = format_ident!("{new_enum_name}Default");
     let default_trait_def = quote! {
@@ -194,12 +223,6 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
     };
 
 
-    let enum_impl = quote! {
-        impl #type_trait_name for #enum_name {
-            #get_type_def
-        }
-    };
-
     let type_impl = quote! {
         impl #default_trait_name for #new_enum_name {
             #get_default_def
@@ -209,17 +232,14 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
 
 
     let res = quote! {
-        #enum_def
-
-        #type_trait_def
-        #enum_impl
-
         #default_trait_def
         #type_impl
     };
 
     res.into()
 }
+
+
 
 
 
