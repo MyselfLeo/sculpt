@@ -4,6 +4,7 @@ mod rule;
 mod proof;
 mod repl;
 mod tools;
+mod context;
 
 
 use lalrpop_util::lalrpop_mod;

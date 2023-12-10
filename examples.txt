@@ -36,3 +36,20 @@ P(x) /\ ~P(x) => falsum*
 
 
 (forall z, F(z)) => F(pierre)
+
+
+
+
+
+context test_1
+
+
+assume A /\ J => Z
+assume J => A
+assume J \/ Z
+
+
+
+proof Z
+axiom
+qed
