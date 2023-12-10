@@ -10,7 +10,7 @@ use strum::{EnumIter, IntoEnumIterator};
 use unicode_segmentation::UnicodeSegmentation;
 use crate::inductive::Formula;
 use crate::proof::Proof;
-use crate::rule::{Rule, RuleType, RuleTypeDefault, Side};
+use crate::rule::{Rule, RuleType, Side};
 use crate::tools;
 use deducnat_macro::{EnumType, EnumDoc};
 
