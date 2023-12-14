@@ -2,7 +2,7 @@ use std::fmt::Display;
 use strum::IntoEnumIterator;
 
 use crate::inductive::Formula;
-use crate::rule::{RuleType, RuleTypeDefault, RuleTypeIter};
+use crate::rule::RuleType;
 
 
 #[derive(Clone)]

@@ -27,6 +27,17 @@ impl Proof {
         }
     }
 
+    pub fn start_with_antecedents(goal: Box<Formula>, antecedents: Vec<Box<Formula>>) -> Proof {
+        let goal_seq = Sequent::new(antecedents, goal.clone());
+
+        Proof {
+            goal: *goal.clone(),
+            current_goal: Some(Box::new(goal_seq)),
+            sub_goals: VecDeque::new(),
+            step: 0,
+            previous_state: None
+        }
+    }
 
 
     pub fn apply(&mut self, rule: Rule) -> Result<(), String> {

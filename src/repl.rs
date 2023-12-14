@@ -3,6 +3,7 @@ use std::cmp::max;
 use std::fmt::Display;
 use std::io;
 use std::io::Write;
+use std::process::exit;
 use crossterm::execute;
 use crossterm::cursor::MoveTo;
 use crossterm::terminal;
@@ -13,14 +14,21 @@ use crate::proof::Proof;
 use crate::rule::{Rule, RuleType, Side};
 use crate::tools;
 use deducnat_macro::{EnumType, EnumDoc};
+use crate::context::Context;
 
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+
 
 macro_rules! titleline {
     () => {
         println!("deducnat - v{VERSION}");
     };
+    ($s:expr) => {
+        let upcs = $s.to_uppercase();
+        println!("{upcs} - deducnat - v{VERSION}");
+    }
 }
 
 
@@ -29,9 +37,10 @@ pub enum ReplState {
     Idle,
     Help(Box<ReplState>),
     CommandHelp(ReplCommand, Box<ReplState>),
-    Proving(RefCell<Proof>, Vec<ReplCommand>),
-    StepList(RefCell<Proof>, Vec<ReplCommand>),
-    Qed(RefCell<Proof>, Vec<ReplCommand>),
+    Context(RefCell<Context>, Vec<ReplCommand>),
+    //Proving(RefCell<Context>, RefCell<Proof>, Vec<ReplCommand>),
+    StepList(RefCell<Context>, Vec<ReplCommand>),
+    //Qed(RefCell<Proof>, Vec<ReplCommand>),
     Quitting
 }
 
@@ -39,7 +48,7 @@ impl PartialEq for ReplState {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (ReplState::Idle, ReplState::Idle) => true,
-            (ReplState::Proving(_, _), ReplState::Proving(_, _)) => true,
+            //(ReplState::Proving(_, _, _), ReplState::Proving(_, _, _)) => true,
             (ReplState::Quitting, ReplState::Quitting) => true,
             _ => false
         }
@@ -54,8 +63,12 @@ impl PartialEq for ReplState {
 
 #[derive(Clone, EnumIter, EnumDoc, EnumType)]
 pub enum ReplCommand {
-    #[cmd(name="proof", usage="<F>", desc="Start the proving process of F")]
+    #[cmd(name="context", usage="<name>", desc="Create a new proof context")]
+    Context(String),
+    #[cmd(name="proof", usage="<F>", desc="Start the proving process of F in the current context")]
     Proof(String),
+    #[cmd(name="admit", usage="<F>", desc="Add an unproven assumption to the current context")]
+    Admit(String),
     #[cmd(name="help", desc="Display this information screen")]
     Help,
     #[cmd(name="help", usage="[command]", desc="Display information about a particular command")]
@@ -163,12 +176,11 @@ impl ReplCommand {
         let command = command.trim();
         if command.is_empty() {return Ok(ReplCommand::Return);}
 
-        let (cname, cparam) = match command.split_once(' ') {
-            None => (command, ""),
-            Some(c) => c
-        };
+        let (cname, cparam) = command.split_once(' ').unwrap_or_else(|| (command, ""));
 
         let cmd = match (cname, cparam) {
+            ("context", s) => ReplCommand::Context(s.to_string()),
+            ("admit", s) => ReplCommand::Admit(s.to_string()),
             ("proof", s) => ReplCommand::Proof(s.to_string()),
 
             ("axiom", "") => ReplCommand::Axiom,
@@ -325,7 +337,7 @@ impl Repl {
 
             ReplState::Idle => {
                 titleline!();
-                println!("type 'proof P' to start to prove P");
+                println!("type 'context <name>' to create a new context");
                 println!("     'help' for command information");
                 println!("     'quit' to leave");
             }
@@ -400,14 +412,35 @@ impl Repl {
             }
 
 
+            ReplState::Context(ctx, _) => {
+                titleline!(ctx.borrow().get_name());
 
-            ReplState::Proving(p, _) => {
-                p.borrow().print();
+                let mut borrow = ctx.borrow_mut();
+                let proof = borrow.get_proof();
+                match proof {
+                    None => {
+                        println!("type 'proof P' to start to prove P");
+                        println!("     'admit F' to add an unproven assumption");
+                        println!("     'help' for command information");
+                        println!("     'quit' to leave");
+
+                        println!();
+
+                        println!("Context:");
+                        let assumptions = borrow.get_context().iter()
+                            .map(|f| f.to_string())
+                            .collect::<Vec<_>>();
+
+                        println!("{}", tools::in_columns(&assumptions, terminal::size()?.0 as usize));
+                    }
+                    Some(p) => p.print()
+                }
             }
 
 
 
-            ReplState::Qed(p, steps) => {
+
+            /*ReplState::Qed(p, steps) => {
                 let cmd_strs = steps.iter()
                     .enumerate()
                     .map(|(i, e)| format!("{i}. {e}"))
@@ -421,18 +454,20 @@ impl Repl {
 
                 let cols = tools::in_columns(&cmd_strs, terminal::size()?.0 as usize);
                 println!("{cols}");
-            }
+            }*/
 
 
 
             ReplState::StepList(p, steps) => {
+                titleline!(p.borrow().get_name());
+
                 let cmd_strs = steps.iter()
                     .enumerate()
                     .map(|(i, e)| format!("{i}. {e}"))
                     .collect::<Vec<String>>();
 
-                if p.borrow().is_finished() {println!("Goal: {} (finished)", p.borrow().goal)}
-                else {println!("Goal: {}", p.borrow().goal)}
+                //if p.borrow().is_finished() {println!("Goal: {} (finished)", p.borrow().goal)}
+                //else {println!("Goal: {}", p.borrow().goal)}
 
                 println!();
 
@@ -447,18 +482,24 @@ impl Repl {
             ReplState::Quitting => {}
         }
 
-        let applicable_rules = if let ReplState::Proving(p, _) = &self.state {
-            match p.borrow().get_applicable_rules() {
-                None => None,
-                Some(l) => {
-                    let res = l.iter()
-                        .map(|rt| ReplCommandType::from_rule(rt))
-                        .flatten()
-                        .map(|x| x.get_default().name().unwrap_or("".to_string()))
-                        .collect();
+        let applicable_rules = if let ReplState::Context(ctx, _) = &self.state {
+            let mut borrow = ctx.borrow_mut();
+            if let Some(p) = borrow.get_proof() {
+                match p.get_applicable_rules() {
+                    None => None,
+                    Some(l) => {
+                        let res = l.iter()
+                            .map(|rt| ReplCommandType::from_rule(rt))
+                            .flatten()
+                            .map(|x| x.get_default().name().unwrap_or("".to_string()))
+                            .collect();
 
-                    Some(res)
+                        Some(res)
+                    }
                 }
+            }
+            else {
+                None
             }
         }
         else { None };
@@ -500,70 +541,103 @@ impl Repl {
 
 
     fn execute(&mut self, command: ReplCommand) -> Result<(), ReplError> {
-        match (&mut self.state, &command) {
+        let curr_state = self.state.clone();
+        match (curr_state, &command) {
+
+            // Start of context
+            (ReplState::Idle, ReplCommand::Context(ctx_name)) => {
+                let ctx = Context::new(ctx_name.clone());
+                self.state = ReplState::Context(RefCell::new(ctx), Vec::new());
+
+                Ok(())
+            }
+
+
+            // Assumption
+            (ReplState::Context(ref mut ctx, _), ReplCommand::Admit(s)) => {
+                let formula = match Formula::from_str(&s) {
+                    Ok(f) => f,
+                    Err(e) => return Err(ReplError::CommandError(e))
+                };
+
+                ctx.borrow_mut().add_assumption(formula);
+                Ok(())
+            }
+
 
             // Start of proof
-            (ReplState::Idle, ReplCommand::Proof(p)) => {
+            (ReplState::Context(ref mut ctx, _), ReplCommand::Proof(p)) => {
                 let formula = match Formula::from_str(&p) {
                     Ok(f) => f,
                     Err(e) => return Err(ReplError::CommandError(e))
                 };
 
-                let proof = Proof::start(formula);
-                self.state = ReplState::Proving(RefCell::new(proof), Vec::new());
-
-                Ok(())
+                match ctx.borrow_mut().start_proof(formula) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(ReplError::CommandError(e))
+                }
             },
 
-            (ReplState::Proving(ref mut p, cs), subcommand) => {
-                macro_rules! apply_rule {
-                    ($rule:expr) => {
-                        match p.borrow_mut().apply($rule) {
-                            Ok(_) => {
-                                cs.push(command.clone());
-                                Ok(())
-                            },
-                            Err(e) => Err(ReplError::CommandError(e))
-                        }
-                    };
-                }
+            (ReplState::Context(ctx, mut cs), subcommand) => {
+                let mut borrow = ctx.borrow_mut();
 
-                match subcommand {
-                    ReplCommand::Axiom => apply_rule!(Rule::Axiom),
-                    ReplCommand::Intro => apply_rule!(Rule::Intro),
-                    ReplCommand::Intros => apply_rule!(Rule::Intros),
-                    ReplCommand::Trans(s) => apply_rule!(Rule::Trans(s.to_string())),
-                    ReplCommand::Split => apply_rule!(Rule::SplitAnd),
-                    ReplCommand::AndLeft(s) => apply_rule!(Rule::And(Side::Left, s.to_string())),
-                    ReplCommand::AndRight(s) => apply_rule!(Rule::And(Side::Right, s.to_string())),
-                    ReplCommand::KeepLeft => apply_rule!(Rule::Keep(Side::Left)),
-                    ReplCommand::KeepRight => apply_rule!(Rule::Keep(Side::Right)),
-                    ReplCommand::FromOr(s) => apply_rule!(Rule::FromOr(s.to_string())),
-                    ReplCommand::FromBottom => apply_rule!(Rule::FromBottom),
-                    ReplCommand::ExFalso(s) => apply_rule!(Rule::ExFalso(s.to_string())),
-                    ReplCommand::Generalize(s) => apply_rule!(Rule::Generalize(s.to_string())),
-                    ReplCommand::FixAs(s) => apply_rule!(Rule::FixAs(s.to_string())),
-                    ReplCommand::Consider(s) => apply_rule!(Rule::Consider(s.to_string())),
-                    ReplCommand::RenameAs(s) => apply_rule!(Rule::RenameAs(s.to_string())),
-
-                    ReplCommand::Qed => {
-                        if p.borrow().is_finished() {
-                            cs.push(command.clone());
-                            self.state = ReplState::Qed(p.clone(), cs.clone());
-                            Ok(())
-                        } else {
-                            Err(ReplError::CommandError("Proof not finished".to_string()))
+                // Proof specific commands
+                match borrow.get_proof() {
+                    None => (),
+                    Some(p) => {
+                        macro_rules! apply_rule {
+                            ($rule:expr) => {
+                                match p.apply($rule) {
+                                    Ok(_) => {
+                                        cs.push(command.clone());
+                                        Ok(())
+                                    },
+                                    Err(e) => Err(ReplError::CommandError(e))
+                                }
+                            };
                         }
+
+
+                        match subcommand {
+                            ReplCommand::Axiom => apply_rule!(Rule::Axiom),
+                            ReplCommand::Intro => apply_rule!(Rule::Intro),
+                            ReplCommand::Intros => apply_rule!(Rule::Intros),
+                            ReplCommand::Trans(s) => apply_rule!(Rule::Trans(s.to_string())),
+                            ReplCommand::Split => apply_rule!(Rule::SplitAnd),
+                            ReplCommand::AndLeft(s) => apply_rule!(Rule::And(Side::Left, s.to_string())),
+                            ReplCommand::AndRight(s) => apply_rule!(Rule::And(Side::Right, s.to_string())),
+                            ReplCommand::KeepLeft => apply_rule!(Rule::Keep(Side::Left)),
+                            ReplCommand::KeepRight => apply_rule!(Rule::Keep(Side::Right)),
+                            ReplCommand::FromOr(s) => apply_rule!(Rule::FromOr(s.to_string())),
+                            ReplCommand::FromBottom => apply_rule!(Rule::FromBottom),
+                            ReplCommand::ExFalso(s) => apply_rule!(Rule::ExFalso(s.to_string())),
+                            ReplCommand::Generalize(s) => apply_rule!(Rule::Generalize(s.to_string())),
+                            ReplCommand::FixAs(s) => apply_rule!(Rule::FixAs(s.to_string())),
+                            ReplCommand::Consider(s) => apply_rule!(Rule::Consider(s.to_string())),
+                            ReplCommand::RenameAs(s) => apply_rule!(Rule::RenameAs(s.to_string())),
+
+                            ReplCommand::Qed => {
+                                match ctx.borrow_mut().validate_proof() {
+                                    Ok(_) => Ok(()),
+                                    Err(e) => Err(ReplError::CommandError(e.clone()))
+                                }
+                            }
+
+                            _ => Ok(())
+                        }?;
                     }
+                };
 
 
+                // other commands
+                match subcommand {
                     ReplCommand::List => {
-                        self.state = ReplState::StepList(p.clone(), cs.clone());
+                        self.state = ReplState::StepList(ctx.clone(), cs.clone());
                         Ok(())
                     }
 
 
-                    ReplCommand::Undo => {
+                    /*ReplCommand::Undo => {
                         let previous_state = p.borrow_mut().previous_state.clone();
 
                         match previous_state {
@@ -571,12 +645,12 @@ impl Repl {
                                 let mut command_list = cs.clone();
                                 command_list.pop();
 
-                                self.state = ReplState::Proving(RefCell::new(*ps.clone()), command_list);
+                                self.state = ReplState::Proving(ctx.to_owned(), RefCell::new(*ps.clone()), command_list);
                                 Ok(())
                             },
                             None => Err(ReplError::CommandError("No previous operation".to_string())),
                         }
-                    },
+                    },*/ // todo: reimplement Undo
 
                     ReplCommand::Exit => {
                         self.state = ReplState::Idle;
@@ -619,10 +693,10 @@ impl Repl {
 
 
 
-            (ReplState::Qed(_, _), ReplCommand::Exit | ReplCommand::Return) => {
+            /*(ReplState::Qed(_, _), ReplCommand::Exit | ReplCommand::Return) => {
                 self.state = ReplState::Idle;
                 Ok(())
-            }
+            }*/
 
 
 
@@ -658,7 +732,7 @@ impl Repl {
 
 
             (ReplState::StepList(p, l), ReplCommand::Exit | ReplCommand::Return) => {
-                self.state = ReplState::Proving(p.clone(), l.clone());
+                self.state = ReplState::Context(p.clone(), l.clone());
                 Ok(())
             }
 
