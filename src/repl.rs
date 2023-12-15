@@ -37,9 +37,9 @@ pub enum ReplState {
     Idle,
     Help(Box<ReplState>),
     CommandHelp(ReplCommand, Box<ReplState>),
-    Context(RefCell<Context>, Vec<ReplCommand>),
+    Context(Box<Context>, Vec<ReplCommand>),
     //Proving(RefCell<Context>, RefCell<Proof>, Vec<ReplCommand>),
-    StepList(RefCell<Context>, Vec<ReplCommand>),
+    StepList(Box<Context>, Vec<ReplCommand>),
     //Qed(RefCell<Proof>, Vec<ReplCommand>),
     Quitting
 }
@@ -333,7 +333,7 @@ impl Repl {
     fn update(&mut self) -> io::Result<()> {
         execute!(io::stdout(), MoveTo(0, 0), terminal::Clear(terminal::ClearType::FromCursorDown))?;
 
-        match &self.state {
+        match &mut self.state {
 
             ReplState::Idle => {
                 titleline!();
@@ -412,11 +412,9 @@ impl Repl {
             }
 
 
-            ReplState::Context(ctx, _) => {
-                titleline!(ctx.borrow().get_name());
-
-                let mut borrow = ctx.borrow_mut();
-                let proof = borrow.get_proof();
+            ReplState::Context(ref mut ctx, _) => {
+                titleline!(ctx.get_name());
+                let proof = ctx.get_proof();
                 match proof {
                     None => {
                         println!("type 'proof P' to start to prove P");
@@ -427,13 +425,13 @@ impl Repl {
                         println!();
 
                         println!("Context:");
-                        let assumptions = borrow.get_context().iter()
+                        let assumptions = ctx.get_context().iter()
                             .map(|f| f.to_string())
                             .collect::<Vec<_>>();
 
                         println!("{}", tools::in_columns(&assumptions, terminal::size()?.0 as usize));
                     }
-                    Some(p) => p.print()
+                    Some(p) => p.print(),
                 }
             }
 
@@ -459,7 +457,7 @@ impl Repl {
 
 
             ReplState::StepList(p, steps) => {
-                titleline!(p.borrow().get_name());
+                titleline!(p.get_name());
 
                 let cmd_strs = steps.iter()
                     .enumerate()
@@ -482,9 +480,8 @@ impl Repl {
             ReplState::Quitting => {}
         }
 
-        let applicable_rules = if let ReplState::Context(ctx, _) = &self.state {
-            let mut borrow = ctx.borrow_mut();
-            if let Some(p) = borrow.get_proof() {
+        let applicable_rules = if let ReplState::Context(ref mut ctx, _) = &mut self.state {
+            if let Some(p) = ctx.get_proof() {
                 match p.get_applicable_rules() {
                     None => None,
                     Some(l) => {
@@ -541,48 +538,52 @@ impl Repl {
 
 
     fn execute(&mut self, command: ReplCommand) -> Result<(), ReplError> {
-        let curr_state = self.state.clone();
-        match (curr_state, &command) {
+        match (&mut self.state, &command) {
 
             // Start of context
             (ReplState::Idle, ReplCommand::Context(ctx_name)) => {
                 let ctx = Context::new(ctx_name.clone());
-                self.state = ReplState::Context(RefCell::new(ctx), Vec::new());
+                self.state = ReplState::Context(Box::new(ctx), Vec::new());
 
                 Ok(())
             }
 
 
             // Assumption
-            (ReplState::Context(ref mut ctx, _), ReplCommand::Admit(s)) => {
+            (ReplState::Context(ref mut ctx, cs), ReplCommand::Admit(s)) => {
                 let formula = match Formula::from_str(&s) {
                     Ok(f) => f,
                     Err(e) => return Err(ReplError::CommandError(e))
                 };
 
-                ctx.borrow_mut().add_assumption(formula);
+                ctx.add_assumption(formula);
+                cs.push(command.clone());
                 Ok(())
             }
 
 
+
+
+
             // Start of proof
-            (ReplState::Context(ref mut ctx, _), ReplCommand::Proof(p)) => {
+            (ReplState::Context(ref mut ctx, cs), ReplCommand::Proof(p)) => {
                 let formula = match Formula::from_str(&p) {
                     Ok(f) => f,
                     Err(e) => return Err(ReplError::CommandError(e))
                 };
 
-                match ctx.borrow_mut().start_proof(formula) {
-                    Ok(_) => Ok(()),
+                match ctx.start_proof(formula) {
+                    Ok(_) => {
+                        cs.push(command.clone());
+                        Ok(())
+                    },
                     Err(e) => Err(ReplError::CommandError(e))
                 }
             },
 
-            (ReplState::Context(ctx, mut cs), subcommand) => {
-                let mut borrow = ctx.borrow_mut();
-
+            (ReplState::Context(ref mut ctx, ref mut cs), subcommand) => {
                 // Proof specific commands
-                match borrow.get_proof() {
+                match ctx.get_proof() {
                     None => (),
                     Some(p) => {
                         macro_rules! apply_rule {
@@ -617,7 +618,7 @@ impl Repl {
                             ReplCommand::RenameAs(s) => apply_rule!(Rule::RenameAs(s.to_string())),
 
                             ReplCommand::Qed => {
-                                match ctx.borrow_mut().validate_proof() {
+                                match ctx.validate_proof() {
                                     Ok(_) => Ok(()),
                                     Err(e) => Err(ReplError::CommandError(e.clone()))
                                 }

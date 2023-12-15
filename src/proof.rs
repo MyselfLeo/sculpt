@@ -9,8 +9,7 @@ pub struct Proof {
     pub goal: Formula,
     current_goal: Option<Box<Sequent>>,
     sub_goals: VecDeque<Box<Sequent>>,
-    pub step: u16,
-    pub previous_state: Option<Box<Proof>>
+    pub step: u16
 }
 
 
@@ -22,8 +21,7 @@ impl Proof {
             goal: *goal.clone(),
             current_goal: Some(Box::new(goal_seq)),
             sub_goals: VecDeque::new(),
-            step: 0,
-            previous_state: None
+            step: 0
         }
     }
 
@@ -34,8 +32,7 @@ impl Proof {
             goal: *goal.clone(),
             current_goal: Some(Box::new(goal_seq)),
             sub_goals: VecDeque::new(),
-            step: 0,
-            previous_state: None
+            step: 0
         }
     }
 
@@ -48,7 +45,7 @@ impl Proof {
 
         let res = rule.apply(crrt_goal)?;
 
-        self.previous_state = Some(Box::new(self.clone())); // Allow undo operation
+        //self.previous_state = Some(Box::new(self.clone())); // Allow undo operation
 
         for new_seq in res.into_iter().rev() {
             self.sub_goals.insert(0, Box::new(new_seq))

@@ -5,13 +5,13 @@ use crate::proof::Proof;
 pub struct Context {
     name: String,
     context: Vec<Box<Formula>>,
-
-    current_proof: Option<Box<Proof>>
+    current_proof: Option<Box<Proof>>,
+    previous_state: Option<Box<Context>>
 }
 
 impl Context {
     pub fn new(name: String) -> Context {
-        Context { name, context: vec![], current_proof: None }
+        Context { name, context: vec![], current_proof: None, previous_state: None }
     }
 
     pub fn get_name(&self) -> String {
