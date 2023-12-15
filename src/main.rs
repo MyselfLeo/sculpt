@@ -1,17 +1,18 @@
 mod proof;
-mod repl;
 mod tools;
 mod context;
 mod logic;
+mod interpreter;
+mod repl;
 
 
 use lalrpop_util::lalrpop_mod;
+lalrpop_mod!(pub parser);
+
 use repl::{Repl, ReplError};
 
 use std::env;
 
-
-lalrpop_mod!(pub parser);
 
 
 
