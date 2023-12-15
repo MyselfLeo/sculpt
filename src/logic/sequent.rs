@@ -1,8 +1,8 @@
 use std::fmt::Display;
 use strum::IntoEnumIterator;
 
-use crate::inductive::Formula;
-use crate::rule::RuleType;
+use crate::logic::Formula;
+use crate::logic::rule::RuleType;
 
 
 #[derive(Clone)]

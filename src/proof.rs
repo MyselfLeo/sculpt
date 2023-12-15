@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
-use crate::inductive::Formula;
-use crate::rule::{Rule, RuleType};
-use crate::sequent::Sequent;
+use crate::logic::{Formula, Sequent};
+use crate::logic::rule::{Rule, RuleType};
 
 
 #[derive(Clone)]

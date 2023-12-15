@@ -1,10 +1,8 @@
-mod inductive;
-mod sequent;
-mod rule;
 mod proof;
 mod repl;
 mod tools;
 mod context;
+mod logic;
 
 
 use lalrpop_util::lalrpop_mod;

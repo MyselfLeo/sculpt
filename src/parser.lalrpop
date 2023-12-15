@@ -1,4 +1,4 @@
-use crate::inductive::{Term, Formula};
+use crate::logic::{Term, Formula};
 
 grammar;
 

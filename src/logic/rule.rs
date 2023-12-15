@@ -1,12 +1,13 @@
+//! Natural deduction rules that can be applied to [Sequent]
+
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 use deducnat_macro::EnumType;
 use crate::parser;
-use crate::sequent::Sequent;
-use crate::inductive::{Formula, Term};
+use super::{Formula, Term, Sequent};
 
 
-
+/// Structure used by some [Rule] variants.
 pub enum Side {
     Left,
     Right
@@ -84,6 +85,7 @@ macro_rules! err_goal_form {
 
 
 impl Rule {
+    /// Apply the rule to a given [Sequent]. Returns newly created sequents (0, 1 or more), or an error.
     pub fn apply(&self, sequent: &Sequent) -> Result<Vec<Sequent>, String> {
 
         match self {
@@ -400,6 +402,7 @@ impl Rule {
 
 
 impl RuleType {
+    /// Return whether the rule can be applied to a given sequent.
     pub fn is_applicable(&self, sequent: &Sequent) -> bool {
         match self {
             RuleType::Axiom => {

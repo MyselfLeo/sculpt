@@ -1,4 +1,4 @@
-use crate::inductive::Formula;
+use crate::logic::Formula;
 use crate::proof::Proof;
 
 #[derive(Clone)]

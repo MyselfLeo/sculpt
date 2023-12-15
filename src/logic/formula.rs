@@ -1,90 +1,8 @@
 use std::fmt::{Display, Formatter};
+use crate::{parser, tools};
+use crate::logic::term::Term;
 
-use crate::{tools, parser};
-
-
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Term {
-    Variable(String),
-    Function(String, Vec<Box<Term>>)
-}
-
-
-impl Display for Term {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Term::Variable(v) => write!(f, "{v}"),
-            Term::Function(v, t) => {
-                if t.len() == 0 {
-                    write!(f, "{v}")
-                }
-                else {
-                    write!(f, "{v}({})", tools::list_str(t, ", "))
-                }
-            }
-        }
-    }
-}
-
-
-impl Term {
-    pub fn from_str(str: &str) -> Result<Box<Term>, String> {
-        parser::TermParser::new().parse(str).map_err(|_| "Invalid term".to_string())
-    }
-
-    /// Return whether the given term is used somewhere in this term or not.
-    pub fn exists(&self, term: &Term) -> bool {
-        if self == term {true}
-        else {
-            match self {
-                Term::Variable(_) => false,
-                Term::Function(_, terms) => {
-                    terms.iter().any(|t| t.exists(term))
-                }
-            }
-        }
-    }
-
-
-    /// Replace in this term a term by another.
-    pub fn rewrite(&mut self, old: &Term, new: &Term) {
-        if self == old {
-            println!("h");
-            *self = new.clone();
-        }
-
-        else {
-            match self {
-                Term::Function(_, terms) => {
-                    for t in terms {
-                        t.rewrite(old, new)
-                    }
-                }
-                _ => ()
-            }
-        }
-    }
-
-
-
-    /// Return a list of each variable in the domain
-    /// of this Term.
-    pub fn domain(&self) -> Vec<String> {
-        match self {
-            Term::Variable(x) => vec![x.clone()],
-            Term::Function(_, terms) => {
-                terms.iter()
-                    .map(|t| t.domain())
-                    .flatten()
-                    .collect()
-            }
-        }
-    }
-}
-
-
-
+/// First-order logic formula
 #[derive(Debug, Clone, PartialEq)]
 pub enum Formula {
     Falsum,
@@ -98,10 +16,15 @@ pub enum Formula {
 }
 
 impl Formula {
+    /// Creates a new formula by parsing a string.
+    /// Note that identifiers starting with a lowercase letter will be considered terms,
+    /// and those starting with an uppercase letter will be considered relations.
     pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
         parser::FormulaParser::new().parse(str).map_err(|_| "Invalid formula".to_string())
     }
 
+    /// Return the precedence of the formula based on its type.
+    /// The higher it is, the higher the precedence.
     pub fn get_precedence(&self) -> u8 {
         match self {
             Formula::Falsum | Formula::Relation(_, _) => 5,
@@ -112,6 +35,8 @@ impl Formula {
         }
     }
 
+    /// Return the potential symbol related to this formula, for example "~" for "Not".
+    /// Return an empty literal string if there is no such symbol.
     pub fn get_op_symbol(&self) -> &'static str {
         match self {
             Formula::Falsum => "",
@@ -169,7 +94,7 @@ impl Formula {
         }
     }
 
-    
+
     /// Return a list of the free variables used in this formula
     pub fn domain(&self) -> Vec<String> {
         self.domain_checked(vec![])
