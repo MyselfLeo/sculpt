@@ -85,11 +85,26 @@ impl Command {
 
         let command = match (cname, cparam) {
             ("context", s) if !s.is_empty() => Command::ReplCommand(ReplCommand::Context(s)),
+            ("context", s) if s.is_empty() => {
+                return Err(Error::ReplError(ReplError::CommandError("Expected a context name".to_string())))
+            }
+
             ("help", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Help),
             ("help", s) if !s.is_empty() => Command::ReplCommand(ReplCommand::HelpCommand(s)),
+
             ("undo", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Undo),
+            ("undo", s) if !s.is_empty() => {
+                return Err(Error::ReplError(ReplError::TooMuchArgument))
+            }
+
             ("exit", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Exit),
+            ("exit", s) if !s.is_empty() => {
+                return Err(Error::ReplError(ReplError::TooMuchArgument))
+            }
             ("quit", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Quit),
+            ("quit", s) if !s.is_empty() => {
+                return Err(Error::ReplError(ReplError::TooMuchArgument))
+            }
 
             (e, _) => {
                 if COMMANDS.contains(&e) {

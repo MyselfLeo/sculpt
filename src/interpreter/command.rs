@@ -222,27 +222,39 @@ impl InterpreterCommand {
 
             // Interpreter commands
             //("context", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Context(s)),
-            ("admit", s) if s.len() > 0 => InterpreterCommand::EngineCommand(EngineCommand::Admit(s)),
-            ("proof", s) if s.len() > 0 => InterpreterCommand::EngineCommand(EngineCommand::Proof(s)),
+            ("admit", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Admit(s)),
+            ("admit", s) if s.is_empty() => {
+                return Err(InterpretorError::CommandError("Expected a formula".to_string()))
+            }
+
+            ("proof", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Proof(s)),
+            ("proof", s) if s.is_empty() => {
+                return Err(InterpretorError::CommandError("Expected a formula".to_string()))
+            }
+
             ("qed", s) if s.len() == 0 => InterpreterCommand::EngineCommand(EngineCommand::Qed),
 
             // Rule commands
             ("axiom", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Axiom),
             ("intro", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Intro),
             ("intros", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Intros),
-            ("trans", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::Trans(s)),
+            ("trans", s) => InterpreterCommand::RuleCommand(RuleCommand::Trans(s)),
             ("split", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Split),
-            ("and_left", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::AndLeft(s)),
-            ("and_right", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::AndRight(s)),
+            ("and_left", s) => InterpreterCommand::RuleCommand(RuleCommand::AndLeft(s)),
+            ("and_right", s) => InterpreterCommand::RuleCommand(RuleCommand::AndRight(s)),
             ("keep_left", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::KeepLeft),
             ("keep_right", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::KeepRight),
-            ("from_or", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::FromOr(s)),
-            ("gen", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::Generalize(s)),
-            ("fix_as", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::FixAs(s)),
-            ("consider", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::Consider(s)),
-            ("rename_as", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::RenameAs(s)),
+            ("from_or", s) => InterpreterCommand::RuleCommand(RuleCommand::FromOr(s)),
+            ("gen", s) => InterpreterCommand::RuleCommand(RuleCommand::Generalize(s)),
+            ("fix_as", s) => InterpreterCommand::RuleCommand(RuleCommand::FixAs(s)),
+            ("consider", s) => InterpreterCommand::RuleCommand(RuleCommand::Consider(s)),
+            ("rename_as", s) => InterpreterCommand::RuleCommand(RuleCommand::RenameAs(s)),
             ("from_bottom", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::FromBottom),
-            ("exfalso", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::ExFalso(s)),
+            ("exfalso", s) => InterpreterCommand::RuleCommand(RuleCommand::ExFalso(s)),
+
+            ("qed" | "axiom" | "intro" | "intros" | "spit" | "keep_left" | "keep_right" | "from_bottom", s) if s.len() > 0 => {
+                return Err(InterpretorError::TooMuchArguments)
+            }
 
             (cn, _) => {
                 if COMMANDS.contains(&cn) {

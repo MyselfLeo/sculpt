@@ -156,7 +156,7 @@ impl Rule {
             Rule::Trans(prop) => {
                 let introduced_prop = match Formula::from_str(prop) {
                     Ok(f) => f,
-                    Err(_) => return Err(format!(""))
+                    Err(_) => return Err(format!("Expected a formula"))
                 };
 
                 let implication = Formula::Implies(introduced_prop.clone(), (&sequent.consequent).to_owned());

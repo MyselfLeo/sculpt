@@ -4,7 +4,9 @@ use crate::interpreter::InterpretorError;
 pub enum ReplError {
     EmptyCommand,
     InvalidCommand(String),
-    UnableToRead
+    UnableToRead,
+    CommandError(String),
+    TooMuchArgument
 }
 
 impl Display for ReplError {
@@ -12,7 +14,9 @@ impl Display for ReplError {
         match self {
             ReplError::InvalidCommand(s) => write!(f, "command '{s}' exists but is not valid in this context"),
             ReplError::EmptyCommand => write!(f, "empty command"),
-            ReplError::UnableToRead => write!(f, "unable to read standart input")
+            ReplError::UnableToRead => write!(f, "unable to read standart input"),
+            ReplError::CommandError(s) => write!(f, "{s}"),
+            ReplError::TooMuchArgument => write!(f, "too much arguments")
         }
     }
 }

@@ -165,7 +165,7 @@ impl Repl {
                 println!("COMMANDS (more info with 'help [command]')");
                 println!();
 
-                // todo: query every error
+                // todo: query every command
 
                 /*let strings = Command::iter()
                     .filter_map(|cmd| {
@@ -296,13 +296,17 @@ impl Repl {
         // Error msg & command prompt
         let final_row = terminal::window_size()?.rows;
 
+        let valid_command_str = self.get_valid_commands().iter()
+            .map(|cmd| cmd.name().unwrap_or(String::new()))
+            .collect::<Vec<_>>();
+
         if let Some(e) = &self.last_error {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Error: {e}");
         }
-        else if !self.get_valid_commands().is_empty() {
+        else if !valid_command_str.is_empty() {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
-            print!("Possible commands: {}", tools::list_str(&self.get_valid_commands(), ", "));
+            print!("Possible commands: {}", tools::list_str(&valid_command_str, ", "));
         }
 
         execute!(io::stdout(), MoveTo(0, final_row-1))?;

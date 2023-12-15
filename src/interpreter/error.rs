@@ -7,6 +7,7 @@ pub enum InterpretorError {
     InvalidCommand(String),
     CommandError(String),
     EmptyCommand,
+    TooMuchArguments
 }
 
 impl Display for InterpretorError {
@@ -16,7 +17,8 @@ impl Display for InterpretorError {
             InterpretorError::UnknownCommand(s) => write!(f, "unknown command '{s}'"),
             InterpretorError::InvalidCommand(s) => write!(f, "command '{s}' exists but is not valid in this context"),
             InterpretorError::CommandError(e) => write!(f, "{e}"),
-            InterpretorError::EmptyCommand => write!(f, "empty command")
+            InterpretorError::EmptyCommand => write!(f, "empty command"),
+            InterpretorError::TooMuchArguments => write!(f, "too much arguments")
         }
     }
 }
