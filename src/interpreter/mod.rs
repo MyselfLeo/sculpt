@@ -5,4 +5,5 @@ mod error;
 mod interpreter;
 
 pub use error::InterpretorError;
-pub use command::{Command, InterpreterCommand, RuleCommand};
+pub use command::{InterpreterCommand, EngineCommand};
+pub use interpreter::Interpreter;

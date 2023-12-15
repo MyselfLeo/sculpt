@@ -66,7 +66,7 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
 
     let trait_name = format_ident!("{enum_name}ReplDoc");
     let trait_def = quote! {
-        trait #trait_name {
+        pub trait #trait_name {
             #(#function_signs);*;
         }
     };
@@ -139,7 +139,7 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
         .collect::<Vec<_>>();
 
     let enum_def = quote! {
-        #[derive(EnumIter)]
+        #[derive(EnumIter, PartialEq, Clone, PartialOrd)]
         pub enum #new_enum_name {
             #(#idents),*
         }

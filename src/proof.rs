@@ -72,7 +72,7 @@ impl Proof {
 
         println!("Goal: {}", self.goal);
 
-        match self.sub_goals.len() + 1 {
+        match self.remaining_goals_nb() {
             1 => println!("Step {}  (1 sub-goal remaining)", self.step),
             x => println!("Step {}  ({} sub-goals remaining)", self.step, x)
         };
@@ -91,5 +91,9 @@ impl Proof {
 
     pub fn is_finished(&self) -> bool {
         self.current_goal.is_none()
+    }
+
+    pub fn remaining_goals_nb(&self) -> usize {
+        self.sub_goals.len() + 1
     }
 }

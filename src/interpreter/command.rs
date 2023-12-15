@@ -1,12 +1,12 @@
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 use deducnat_macro::{EnumDoc, EnumType};
-use crate::logic::rule::RuleType;
+use crate::logic::rule::{Rule, RuleType, Side};
 use super::InterpretorError;
 
 
-static COMMANDS: [&str; 20] = [
-    "context",
+static COMMANDS: [&str; 19] = [
+    //"context",
     "admit",
     "proof",
     "qed",
@@ -30,10 +30,10 @@ static COMMANDS: [&str; 20] = [
 
 
 /// Control command for the interpreter. Create context, start proof, finish proof, etc.
-#[derive(Clone, EnumIter, EnumDoc, EnumType)]
-pub enum InterpreterCommand {
-    #[cmd(name="context", usage="<name>", desc="Create a new proof context")]
-    Context(String),
+#[derive(Clone, EnumIter, EnumDoc, EnumType, PartialEq)]
+pub enum EngineCommand {
+    //#[cmd(name="context", usage="<name>", desc="Create a new proof context")]
+    //Context(String),
     #[cmd(name="proof", usage="<F>", desc="Start the proving process of F in the current context")]
     Proof(String),
     #[cmd(name="admit", usage="<F>", desc="Add an unproven assumption to the current context")]
@@ -42,12 +42,12 @@ pub enum InterpreterCommand {
     Qed
 }
 
-impl Display for InterpreterCommand {
+impl Display for EngineCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            InterpreterCommand::Context(s) => write!(f, "context {s}"),
-            InterpreterCommand::Proof(s) => write!(f, "proof {s}"),
-            InterpreterCommand::Admit(s) => write!(f, "admit {s}"),
+            //InterpreterCommand::Context(s) => write!(f, "context {s}"),
+            EngineCommand::Proof(s) => write!(f, "proof {s}"),
+            EngineCommand::Admit(s) => write!(f, "admit {s}"),
             e => match e.name() {
                 Some(n) => write!(f, "{n}"),
                 None => Ok(())
@@ -59,7 +59,7 @@ impl Display for InterpreterCommand {
 
 
 /// Command only available during a proof. Applies natural deduction rules.
-#[derive(Clone, EnumIter, EnumDoc, EnumType)]
+#[derive(Clone, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum RuleCommand {
     #[cmd(name="axiom")]
     Axiom,
@@ -142,6 +142,28 @@ impl RuleCommand {
         let ante_str: Vec<_> = ante.iter().map(|s| s.to_string()).collect();
         Some((ante_str, cons.to_string()))
     }
+
+
+    pub fn to_rule(self) -> Rule {
+        match self {
+            RuleCommand::Axiom => Rule::Axiom,
+            RuleCommand::Intro => Rule::Intro,
+            RuleCommand::Intros => Rule::Intros,
+            RuleCommand::Trans(s) => Rule::Trans(s),
+            RuleCommand::Split => Rule::SplitAnd,
+            RuleCommand::AndLeft(s) => Rule::And(Side::Left, s),
+            RuleCommand::AndRight(s) => Rule::And(Side::Right, s),
+            RuleCommand::KeepLeft => Rule::Keep(Side::Left),
+            RuleCommand::KeepRight => Rule::Keep(Side::Right),
+            RuleCommand::FromOr(s) => Rule::FromOr(s),
+            RuleCommand::Generalize(s) => Rule::Generalize(s),
+            RuleCommand::FixAs(s) => Rule::FixAs(s),
+            RuleCommand::Consider(s) => Rule::Consider(s),
+            RuleCommand::RenameAs(s) => Rule::RenameAs(s),
+            RuleCommand::FromBottom => Rule::FromBottom,
+            RuleCommand::ExFalso(s) => Rule::ExFalso(s)
+        }
+    }
 }
 
 
@@ -169,26 +191,26 @@ impl RuleCommandType {
 
 
 
-
-pub enum Command {
-    Interpreter(InterpreterCommand),
-    Rule(RuleCommand)
+#[derive(Clone, PartialEq)]
+pub enum InterpreterCommand {
+    EngineCommand(EngineCommand),
+    RuleCommand(RuleCommand)
 }
 
-impl Display for Command {
+impl Display for InterpreterCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Command::Interpreter(c) => c.fmt(f),
-            Command::Rule(c) => c.fmt(f),
+            InterpreterCommand::EngineCommand(c) => c.fmt(f),
+            InterpreterCommand::RuleCommand(c) => c.fmt(f),
         }
     }
 }
 
 
-impl Command {
+impl InterpreterCommand {
     /// Creates a command from a string. Typically, this string will either be a line from a file,
     /// or the command read by a REPL.
-    pub fn from(command_str: &str) -> Result<Command, InterpretorError> {
+    pub fn from(command_str: &str) -> Result<InterpreterCommand, InterpretorError> {
         let command_str = command_str.trim();
         if command_str.is_empty() {return Err(InterpretorError::EmptyCommand)}
 
@@ -199,28 +221,28 @@ impl Command {
         let command = match (cname, cparam) {
 
             // Interpreter commands
-            ("context", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Context(s)),
-            ("admit", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Admit(s)),
-            ("proof", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Proof(s)),
-            ("qed", s) if s.len() == 0 => Command::Interpreter(InterpreterCommand::Qed),
+            //("context", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Context(s)),
+            ("admit", s) if s.len() > 0 => InterpreterCommand::EngineCommand(EngineCommand::Admit(s)),
+            ("proof", s) if s.len() > 0 => InterpreterCommand::EngineCommand(EngineCommand::Proof(s)),
+            ("qed", s) if s.len() == 0 => InterpreterCommand::EngineCommand(EngineCommand::Qed),
 
             // Rule commands
-            ("axiom", s) if s.len() == 0 => Command::Rule(RuleCommand::Axiom),
-            ("intro", s) if s.len() == 0 => Command::Rule(RuleCommand::Intro),
-            ("intros", s) if s.len() == 0 => Command::Rule(RuleCommand::Intros),
-            ("trans", s) if s.len() > 0 => Command::Rule(RuleCommand::Trans(s)),
-            ("split", s) if s.len() == 0 => Command::Rule(RuleCommand::Split),
-            ("and_left", s) if s.len() > 0 => Command::Rule(RuleCommand::AndLeft(s)),
-            ("and_right", s) if s.len() > 0 => Command::Rule(RuleCommand::AndRight(s)),
-            ("keep_left", s) if s.len() == 0 => Command::Rule(RuleCommand::KeepLeft),
-            ("keep_right", s) if s.len() == 0 => Command::Rule(RuleCommand::KeepRight),
-            ("from_or", s) if s.len() > 0 => Command::Rule(RuleCommand::FromOr(s)),
-            ("gen", s) if s.len() > 0 => Command::Rule(RuleCommand::Generalize(s)),
-            ("fix_as", s) if s.len() > 0 => Command::Rule(RuleCommand::FixAs(s)),
-            ("consider", s) if s.len() > 0 => Command::Rule(RuleCommand::Consider(s)),
-            ("rename_as", s) if s.len() > 0 => Command::Rule(RuleCommand::RenameAs(s)),
-            ("from_bottom", s) if s.len() == 0 => Command::Rule(RuleCommand::FromBottom),
-            ("exfalso", s) if s.len() > 0 => Command::Rule(RuleCommand::ExFalso(s)),
+            ("axiom", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Axiom),
+            ("intro", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Intro),
+            ("intros", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Intros),
+            ("trans", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::Trans(s)),
+            ("split", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::Split),
+            ("and_left", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::AndLeft(s)),
+            ("and_right", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::AndRight(s)),
+            ("keep_left", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::KeepLeft),
+            ("keep_right", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::KeepRight),
+            ("from_or", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::FromOr(s)),
+            ("gen", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::Generalize(s)),
+            ("fix_as", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::FixAs(s)),
+            ("consider", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::Consider(s)),
+            ("rename_as", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::RenameAs(s)),
+            ("from_bottom", s) if s.len() == 0 => InterpreterCommand::RuleCommand(RuleCommand::FromBottom),
+            ("exfalso", s) if s.len() > 0 => InterpreterCommand::RuleCommand(RuleCommand::ExFalso(s)),
 
             (cn, _) => {
                 if COMMANDS.contains(&cn) {
@@ -231,5 +253,26 @@ impl Command {
         };
 
         Ok(command)
+    }
+
+
+
+    pub fn name(&self) -> Option<String> {
+        match self {
+            InterpreterCommand::EngineCommand(c) => c.name(),
+            InterpreterCommand::RuleCommand(c) => c.name(),
+        }
+    }
+    pub fn desc(&self) -> Option<String> {
+        match self {
+            InterpreterCommand::EngineCommand(c) => c.desc(),
+            InterpreterCommand::RuleCommand(c) => c.desc(),
+        }
+    }
+    pub fn usage(&self) -> Option<String> {
+        match self {
+            InterpreterCommand::EngineCommand(c) => c.usage(),
+            InterpreterCommand::RuleCommand(c) => c.usage(),
+        }
     }
 }
