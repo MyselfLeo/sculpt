@@ -2,7 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
-use deducnat_macro::EnumType;
+use sculpt_macro::EnumType;
 use crate::{parser, error::Error};
 use super::{Formula, Term, Sequent};
 

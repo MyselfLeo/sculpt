@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use deducnat_macro::EnumDoc;
+use sculpt_macro::EnumDoc;
 use strum::EnumIter;
 use crate::interpreter::InterpreterCommand;
 use crate::error::Error;

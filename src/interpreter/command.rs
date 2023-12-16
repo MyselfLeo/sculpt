@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
-use deducnat_macro::{EnumDoc, EnumType};
+use sculpt_macro::{EnumDoc, EnumType};
 use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
 
 

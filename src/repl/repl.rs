@@ -11,14 +11,15 @@ use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
 use crate::tools::{self, ColumnJustification};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const NAME: &str = env!("CARGO_PKG_NAME");
 
 macro_rules! titleline {
     () => {
-        println!("deducnat REPL - v{VERSION}");
+        println!("{NAME} REPL - v{VERSION}");
     };
     ($s:expr) => {
         let upcs = $s.to_uppercase();
-        println!("deducnat REPL - {upcs} - v{VERSION}");
+        println!("{NAME} REPL - {upcs} - v{VERSION}");
     }
 }
 
