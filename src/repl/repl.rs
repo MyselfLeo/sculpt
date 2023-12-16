@@ -1,13 +1,12 @@
 use std::cmp::max;
 use std::io;
 use std::io::Write;
-use std::process::exit;
 use crossterm::cursor::MoveTo;
 use crossterm::{execute, terminal};
 use unicode_segmentation::UnicodeSegmentation;
+use crate::error::Error;
 use crate::interpreter::Interpreter;
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
-use crate::repl::error::{Error, ReplError};
 use crate::tools;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -34,7 +33,7 @@ pub enum ReplState {
 }
 
 impl ReplState {
-    pub fn is_qutting(&self) -> bool {
+    pub fn is_quitting(&self) -> bool {
         match self {
             ReplState::Quitting => true,
             _ => false
@@ -109,7 +108,7 @@ impl Repl {
         let mut txt = String::new();
         match io::stdin().read_line(&mut txt) {
             Ok(_) => {}
-            Err(_) => return Err(Error::ReplError(ReplError::UnableToRead))
+            Err(_) => return Err(Error::UnableToRead)
         };
 
         Command::from(&txt)
@@ -123,7 +122,7 @@ impl Repl {
         execute!(io::stdout(), terminal::EnterAlternateScreen)?;
 
         // Run Repl
-        while !self.state.is_qutting() {
+        while !self.state.is_quitting() {
             self.update()?;
 
             match self.get_command() {
@@ -341,7 +340,7 @@ impl Repl {
 
             // Terminating
             (_, Command::ReplCommand(ReplCommand::Quit)) => {
-                exit(0)
+                self.state = ReplState::Quitting;
             }
 
 
@@ -386,7 +385,7 @@ impl Repl {
                     (_, ReplCommand::Return) => (),
 
                     (_, c) => {
-                        return Err(Error::ReplError(ReplError::InvalidCommand(c.name().unwrap_or(String::new()))))
+                        return Err(Error::InvalidCommand(c.name().unwrap_or("unknown".to_string())))
                     }
                 }
             }
@@ -395,17 +394,13 @@ impl Repl {
 
             // Other commands (that could be found in a file for example)
             (ReplState::Working(ref mut inter, ref mut prev), Command::InterpreterCommand(cmd)) => {
-                match inter.execute(cmd) {
-                    Ok(_) => {
-                        *prev = Box::new(curr_clone);
-                    }
-                    Err(e) => return Err(Error::InterpreterError(e))
-                }
+                inter.execute(cmd)?;
+                *prev = Box::new(curr_clone);
             },
 
 
             (_, cmd) => {
-                return Err(Error::ReplError(ReplError::InvalidCommand(cmd.name().unwrap_or(String::new()))))
+                return Err(Error::InvalidCommand(cmd.name().unwrap_or("unknown".to_string())))
             }
 
 

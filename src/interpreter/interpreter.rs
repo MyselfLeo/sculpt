@@ -1,5 +1,6 @@
+use crate::error::Error;
 use crate::interpreter::command::{RuleCommandType, RuleCommandTypeDefault};
-use super::{InterpreterCommand, EngineCommand, InterpretorError};
+use super::{InterpreterCommand, EngineCommand};
 use crate::logic::Formula;
 use crate::proof::Proof;
 
@@ -54,19 +55,22 @@ impl Interpreter {
 
 
 
-    pub fn execute(&mut self, command: InterpreterCommand) -> Result<(), InterpretorError> {
+    pub fn execute(&mut self, command: InterpreterCommand) -> Result<(), Error> {
         //let current_proof_cpy = self.current_proof.clone();
 
         match (&command, &mut self.current_proof) {
 
             // Adding an assumption
             (InterpreterCommand::EngineCommand(EngineCommand::Admit(_)), Some(_)) => {
-                Err(InterpretorError::CommandError("Cannot add an assumption during a proof".to_string()))
+                Err(Error::CommandError("Cannot add an assumption during a proof".to_string()))
+            }
+            (InterpreterCommand::EngineCommand(EngineCommand::Admit(s)), None) if s.is_empty() => {
+                return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
             (InterpreterCommand::EngineCommand(EngineCommand::Admit(s)), None) => {
                 let formula = match Formula::from_str(&s) {
                     Ok(f) => f,
-                    Err(e) => return Err(InterpretorError::CommandError(e))
+                    Err(e) => return Err(Error::InvalidArguments(e))
                 };
 
                 self.add_assumption(formula);
@@ -77,12 +81,15 @@ impl Interpreter {
 
             // Start of a proof
             (InterpreterCommand::EngineCommand(EngineCommand::Proof(_)), Some(p)) => {
-                Err(InterpretorError::CommandError(format!("Already proving {}", p.goal)))
+                Err(Error::CommandError(format!("Already proving {}", p.goal)))
+            }
+            (InterpreterCommand::EngineCommand(EngineCommand::Proof(s)), None) if s.is_empty() => {
+                return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
             (InterpreterCommand::EngineCommand(EngineCommand::Proof(s)), None) => {
                 let goal = match Formula::from_str(&s) {
                     Ok(f) => f,
-                    Err(e) => return Err(InterpretorError::CommandError(e))
+                    Err(e) => return Err(Error::InvalidArguments(e))
                 };
 
                 self.current_proof = Some(Box::new(Proof::start_with_antecedents(goal, self.context.clone())));
@@ -94,14 +101,14 @@ impl Interpreter {
             (InterpreterCommand::RuleCommand(rule), Some(ref mut p)) => {
                 match p.apply(rule.clone().to_rule()) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(InterpretorError::CommandError(e))
+                    Err(e) => Err(e)
                 }
             }
 
 
             // Ending a proof
             (InterpreterCommand::EngineCommand(EngineCommand::Qed), None) => {
-                Err(InterpretorError::CommandError("No proof to finish".to_string()))
+                Err(Error::CommandError("No proof to finish".to_string()))
             }
             (InterpreterCommand::EngineCommand(EngineCommand::Qed), Some(p)) => {
                 if p.is_finished() {
@@ -113,13 +120,13 @@ impl Interpreter {
                         1 => "One goal has not been proven yet".to_string(),
                         e => format!("{e} goals have not been proven yet")
                     };
-                    Err(InterpretorError::CommandError(txt))
+                    Err(Error::CommandError(txt))
                 }
             }
 
             // Shit happened
             (r, _) => {
-                Err(InterpretorError::CommandError(format!("Unable to apply command {}", r)))
+                Err(Error::CommandError(format!("Unable to apply command {}", r)))
             }
         }
     }

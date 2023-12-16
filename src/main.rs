@@ -3,12 +3,14 @@ mod tools;
 mod logic;
 mod interpreter;
 mod repl;
+mod error;
 
 
+use error::Error;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(pub parser);
 
-use repl::{Repl, Error};
+use repl::Repl;
 
 
 

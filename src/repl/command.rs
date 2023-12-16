@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use deducnat_macro::EnumDoc;
 use crate::interpreter::InterpreterCommand;
-use crate::repl::error::{Error, ReplError};
+use crate::error::Error;
 
 static COMMANDS: [&str; 5] = [
     "context",
@@ -86,7 +86,7 @@ impl Command {
         let command = match (cname, cparam) {
             ("context", s) if !s.is_empty() => Command::ReplCommand(ReplCommand::Context(s)),
             ("context", s) if s.is_empty() => {
-                return Err(Error::ReplError(ReplError::CommandError("Expected a context name".to_string())))
+                return Err(Error::ArgumentsRequired("Expected a context name".to_string()))
             }
 
             ("help", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Help),
@@ -94,27 +94,27 @@ impl Command {
 
             ("undo", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Undo),
             ("undo", s) if !s.is_empty() => {
-                return Err(Error::ReplError(ReplError::TooMuchArgument))
+                return Err(Error::TooMuchArguments(cname.to_string()))
             }
 
             ("exit", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Exit),
             ("exit", s) if !s.is_empty() => {
-                return Err(Error::ReplError(ReplError::TooMuchArgument))
+                return Err(Error::TooMuchArguments(cname.to_string()))
             }
             ("quit", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Quit),
             ("quit", s) if !s.is_empty() => {
-                return Err(Error::ReplError(ReplError::TooMuchArgument))
+                return Err(Error::TooMuchArguments(cname.to_string()))
             }
 
             (e, _) => {
                 if COMMANDS.contains(&e) {
-                    return Err(Error::ReplError(ReplError::InvalidCommand(e.to_string())))
+                    return Err(Error::InvalidCommand(e.to_string()))
                 }
 
                 match InterpreterCommand::from(command_str) {
                     Ok(cmd) => Command::InterpreterCommand(cmd),
                     Err(e) => {
-                        return Err(Error::InterpreterError(e))
+                        return Err(e)
                     }
                 }
             }

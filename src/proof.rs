@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use crate::error::Error;
 use crate::logic::{Formula, Sequent};
 use crate::logic::rule::{Rule, RuleType};
 
@@ -13,17 +14,6 @@ pub struct Proof {
 
 
 impl Proof {
-    pub fn start(goal: Box<Formula>) -> Proof {
-        let goal_seq = Sequent::new(vec![], goal.clone());
-
-        Proof {
-            goal: *goal.clone(),
-            current_goal: Some(Box::new(goal_seq)),
-            sub_goals: VecDeque::new(),
-            step: 0
-        }
-    }
-
     pub fn start_with_antecedents(goal: Box<Formula>, antecedents: Vec<Box<Formula>>) -> Proof {
         let goal_seq = Sequent::new(antecedents, goal.clone());
 
@@ -36,9 +26,9 @@ impl Proof {
     }
 
 
-    pub fn apply(&mut self, rule: Rule) -> Result<(), String> {
+    pub fn apply(&mut self, rule: Rule) -> Result<(), Error> {
         let crrt_goal = match &self.current_goal {
-            None => return Err("Proof finished".to_string()),
+            None => return Err(Error::InvalidCommand("Proof finished".to_string())),
             Some(seq) => seq
         };
 

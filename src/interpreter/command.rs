@@ -1,8 +1,7 @@
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 use deducnat_macro::{EnumDoc, EnumType};
-use crate::logic::rule::{Rule, RuleType, Side};
-use super::InterpretorError;
+use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
 
 
 static COMMANDS: [&str; 19] = [
@@ -210,9 +209,9 @@ impl Display for InterpreterCommand {
 impl InterpreterCommand {
     /// Creates a command from a string. Typically, this string will either be a line from a file,
     /// or the command read by a REPL.
-    pub fn from(command_str: &str) -> Result<InterpreterCommand, InterpretorError> {
+    pub fn from(command_str: &str) -> Result<InterpreterCommand, Error> {
         let command_str = command_str.trim();
-        if command_str.is_empty() {return Err(InterpretorError::EmptyCommand)}
+        if command_str.is_empty() {return Err(Error::EmptyCommand)}
 
         // a command is made up of a command name and command arguments.
         let (cname, cparam) = command_str.split_once(' ').unwrap_or_else(|| (command_str, ""));
@@ -224,12 +223,12 @@ impl InterpreterCommand {
             //("context", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Context(s)),
             ("admit", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Admit(s)),
             ("admit", s) if s.is_empty() => {
-                return Err(InterpretorError::CommandError("Expected a formula".to_string()))
+                return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
 
             ("proof", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Proof(s)),
             ("proof", s) if s.is_empty() => {
-                return Err(InterpretorError::CommandError("Expected a formula".to_string()))
+                return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
 
             ("qed", s) if s.len() == 0 => InterpreterCommand::EngineCommand(EngineCommand::Qed),
@@ -253,14 +252,14 @@ impl InterpreterCommand {
             ("exfalso", s) => InterpreterCommand::RuleCommand(RuleCommand::ExFalso(s)),
 
             ("qed" | "axiom" | "intro" | "intros" | "spit" | "keep_left" | "keep_right" | "from_bottom", s) if s.len() > 0 => {
-                return Err(InterpretorError::TooMuchArguments)
+                return Err(Error::TooMuchArguments(cname.to_string()))
             }
 
             (cn, _) => {
                 if COMMANDS.contains(&cn) {
-                    return Err(InterpretorError::InvalidCommand(cn.to_string()))
+                    return Err(Error::InvalidCommand(cn.to_string()))
                 }
-                return Err(InterpretorError::UnknownCommand(cn.to_string()))
+                return Err(Error::UnknownCommand(cn.to_string()))
             }
         };
 
