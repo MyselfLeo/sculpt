@@ -39,8 +39,18 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustificat
         s.push_str("..");
     };
 
+    let right_nb = match just {
+        ColumnJustification::Balanced => {
+            vec.len().div_ceil(2)
+        },
+        ColumnJustification::Fill(x) => {
+            if x > vec.len() {0}
+            else {vec.len() - x}
+        },
+    };
+
     // Shorten the strings if required by the requested width
-    if width < (column_length * 2 + SEP_SIZE) {
+    if right_nb > 0 && width < (column_length * 2 + SEP_SIZE) {
         column_length = (width - SEP_SIZE) / 2;
         strings.iter_mut().for_each(|s| shorten(s, column_length));
     };

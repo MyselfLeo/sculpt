@@ -56,12 +56,12 @@ qed
 
 
 
-forall x, (is_vegetarian(x) => ~has_meat(x))
-forall x, (~is_vegetarian(x) => has_meat(x))
+forall x, (IsVegetarian(x) => ~HasMeat(x))
+forall x, (~IsVegetarian(x) => HasMeat(x))
 
-forall x, (is_hamburger(x) => is_sandwich(x))
+forall x, (IsHamburger(x) => IsSandwich(x))
 
-is_hamburger(bob) /\ ~is_vegetarian(bob)
+IsHamburger(bob) /\ ~IsVegetarian(bob)
 
 
-forall x, (is_sandwich(x) /\ has_meat(x) => is_hotdog(x))
+forall x, (IsSandwich(x) /\ HasMeat(x) => IsHotdog(x))
