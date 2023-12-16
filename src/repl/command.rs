@@ -4,9 +4,10 @@ use strum::EnumIter;
 use crate::interpreter::InterpreterCommand;
 use crate::error::Error;
 
-static COMMANDS: [&str; 5] = [
+static COMMANDS: [&str; 6] = [
     "context",
     "help",
+    "list",
     "undo",
     "exit",
     "quit"
@@ -20,6 +21,8 @@ pub enum ReplCommand {
     Help,
     #[cmd(name="help", usage="[command]", desc="Display information about a particular command")]
     HelpCommand(String),
+    #[cmd(name="list", desc="Display the list of commands for the current context")]
+    List,
     #[cmd(name="undo", desc="Revert last command while in proof mode")]
     Undo,
     #[cmd(name="exit", desc="Close sub-screens (help, list) or go back to main screen")]
@@ -35,6 +38,7 @@ impl Display for ReplCommand {
             ReplCommand::Context(s) => write!(f, "context {s}"),
             ReplCommand::Help => write!(f, "help"),
             ReplCommand::HelpCommand(s) => write!(f, "help {s}"),
+            ReplCommand::List => write!(f, "list"),
             ReplCommand::Undo => write!(f, "undo"),
             ReplCommand::Exit => write!(f, "exit"),
             ReplCommand::Quit => write!(f, "quit"),
@@ -92,6 +96,11 @@ impl Command {
 
             ("help", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Help),
             ("help", s) if !s.is_empty() => Command::ReplCommand(ReplCommand::HelpCommand(s)),
+
+            ("list", s) if s.is_empty() => Command::ReplCommand(ReplCommand::List),
+            ("list", s) if !s.is_empty() => {
+                return Err(Error::TooMuchArguments(cname.to_string()))
+            }
 
             ("undo", s) if s.is_empty() => Command::ReplCommand(ReplCommand::Undo),
             ("undo", s) if !s.is_empty() => {

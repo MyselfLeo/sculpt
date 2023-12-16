@@ -93,6 +93,7 @@ impl Interpreter {
                 };
 
                 self.current_proof = Some(Box::new(Proof::start_with_antecedents(goal, self.context.clone())));
+                self.command_stack.push(command);
                 Ok(())
             }
 
@@ -100,7 +101,10 @@ impl Interpreter {
             // Rule application to a proof
             (InterpreterCommand::RuleCommand(rule), Some(ref mut p)) => {
                 match p.apply(rule.clone().to_rule()) {
-                    Ok(_) => Ok(()),
+                    Ok(_) => {
+                        self.command_stack.push(command);
+                        Ok(())
+                    },
                     Err(e) => Err(e)
                 }
             }
@@ -114,6 +118,7 @@ impl Interpreter {
                 if p.is_finished() {
                     self.context.push(Box::new(p.goal.clone()));
                     self.current_proof = None;
+                    self.command_stack.push(command);
                     Ok(())
                 } else {
                     let txt = match p.remaining_goals_nb() {

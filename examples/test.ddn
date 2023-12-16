@@ -4,4 +4,4 @@ admit Athlete(pierre) /\ Intelligent(pierre)
 
 
 proof Athlete(pierre) /\ Intelligent(pierre) => Carriere(pierre)
-qed 
+qed

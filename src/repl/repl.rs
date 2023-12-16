@@ -8,7 +8,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::error::Error;
 use crate::interpreter::{Interpreter, EngineCommand, RuleCommand, InterpreterCommand};
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
-use crate::tools;
+use crate::tools::{self, ColumnJustification};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -30,6 +30,7 @@ pub enum ReplState {
     Working(Box<Interpreter>, Box<ReplState>),
     Help(Box<ReplState>),
     CommandHelp(Command, Box<ReplState>),
+    CommandStack(Box<ReplState>),
     Quitting
 }
 
@@ -92,6 +93,9 @@ impl Repl {
                 res.push(Command::ReplCommand(ReplCommand::Exit));
             }
             ReplState::CommandHelp(_, _) => {
+                res.push(Command::ReplCommand(ReplCommand::Exit));
+            }
+            ReplState::CommandStack(_) => {
                 res.push(Command::ReplCommand(ReplCommand::Exit));
             }
             ReplState::Quitting => ()
@@ -193,7 +197,7 @@ impl Repl {
                     .map(|(name, desc)| format!("{:20} {}", name, desc))
                     .collect::<Vec<String>>();
 
-                let cols = tools::in_columns(&strings, terminal::size()?.0 as usize);
+                let cols = tools::in_columns(&strings, terminal::size()?.0 as usize, ColumnJustification::Balanced);
                 println!("{cols}");
             }
 
@@ -256,7 +260,7 @@ impl Repl {
                             .map(|f| f.to_string())
                             .collect::<Vec<_>>();
 
-                        println!("{}", tools::in_columns(&assumptions, terminal::size()?.0 as usize));
+                        println!("{}", tools::in_columns(&assumptions, terminal::size()?.0 as usize, ColumnJustification::Balanced));
                     }
                     Some(p) => p.print(),
                 }
@@ -265,43 +269,31 @@ impl Repl {
 
 
 
-            /*ReplState::Qed(p, steps) => {
-                let cmd_strs = steps.iter()
-                    .enumerate()
-                    .map(|(i, e)| format!("{i}. {e}"))
-                    .collect::<Vec<String>>();
+            ReplState::CommandStack(state) => {
+                let p = match state.as_ref() {
+                    ReplState::Working(p, _) => p,
+                    _ => unreachable!()
+                };
 
                 titleline!();
-                println!("PROOF OF  {}", p.borrow().goal);
                 println!();
-                println!("DEDUCTION STEPS:");
-                println!();
+                println!("{}", p.name.to_uppercase());
 
-                let cols = tools::in_columns(&cmd_strs, terminal::size()?.0 as usize);
-                println!("{cols}");
-            }*/
-
-
-
-            /*ReplState::StepList(p, steps) => {
-                titleline!(p.get_name());
-
-                let cmd_strs = steps.iter()
-                    .enumerate()
-                    .map(|(i, e)| format!("{i}. {e}"))
+                let cmd_strs = p.get_current_stack().iter()
+                    .map(|e| {
+                        match e {
+                            InterpreterCommand::EngineCommand(ec) => ec.to_string(),
+                            InterpreterCommand::RuleCommand(rc) => format!("  {rc}"),
+                        }
+                    })
                     .collect::<Vec<String>>();
-
-                //if p.borrow().is_finished() {println!("Goal: {} (finished)", p.borrow().goal)}
-                //else {println!("Goal: {}", p.borrow().goal)}
+                let max_lines = (terminal::size()?.1 - 10) as usize;
 
                 println!();
 
-                println!("COMMANDS HISTORY");
-                println!();
-
-                let cols = tools::in_columns(&cmd_strs, terminal::size()?.0 as usize);
+                let cols = tools::in_columns(&cmd_strs, terminal::size()?.0 as usize, ColumnJustification::Fill(max_lines));
                 println!("{cols}");
-            }*/
+            }
 
 
             ReplState::Quitting => {}
@@ -373,6 +365,11 @@ impl Repl {
                         self.state = *prev.clone();
                     },
 
+                    // Go to command stack display
+                    (ReplState::Working(_, _), ReplCommand::List) => {
+                        self.state = ReplState::CommandStack(Box::new(curr_clone));
+                    }
+
                     // Go to help page
                     (s, ReplCommand::Help) => {
                         // if the previous state is also Help or CommandHelp, we use this state's
@@ -396,7 +393,12 @@ impl Repl {
                         self.state = *s.clone();
                     },
 
-                    // 'Return' only has an effect on sub-screens (Help, CommandHelp))
+                    // Exit stack
+                    (ReplState::CommandStack(s), ReplCommand::Exit | ReplCommand::Return) => {
+                        self.state = *s.clone();
+                    }
+
+                    // 'Return' only has an effect on sub-screens (Help, CommandHelp, CommandStack))
                     (_, ReplCommand::Return) => (),
 
                     (_, c) => {
