@@ -78,7 +78,7 @@ pub enum RuleCommand {
     KeepLeft,
     #[cmd(name="keep_right")]
     KeepRight,
-    #[cmd(name="from_or", usage="<F1> \\/ <F2>")]
+    #[cmd(name="from_or", usage="<F> \\/ <G>")]
     FromOr(String),
     #[cmd(name="gen", usage="<T>")]
     Generalize(String),
@@ -128,7 +128,7 @@ impl RuleCommand {
             RuleCommand::AndRight(_) => (vec!["Γ ⊢ G /\\ F"], "Γ ⊢ G"),
             RuleCommand::KeepLeft => (vec!["Γ ⊢ F"], "Γ ⊢ F \\/ G"),
             RuleCommand::KeepRight => (vec!["Γ ⊢ G"], "Γ ⊢ F \\/ G"),
-            RuleCommand::FromOr(_) => (vec!["Γ ⊢ F1 \\/ F2", "Γ, F1 ⊢ H", "Γ, F2 ⊢ H"], "Γ ⊢ H"),
+            RuleCommand::FromOr(_) => (vec!["Γ ⊢ F \\/ G", "Γ, F ⊢ H", "Γ, G ⊢ H"], "Γ ⊢ H"),
             RuleCommand::Generalize(_) => (vec!["Γ ⊢ forall v, F"], "Γ ⊢ F[v -> T]"),
             RuleCommand::FixAs(_) => (vec!["Γ ⊢ F[v -> T]"], "Γ ⊢ exists v, F"),
             RuleCommand::Consider(_) => (vec!["Γ ⊢ exists v, F", "Γ, F ⊢ G"], "Γ ⊢ G"),

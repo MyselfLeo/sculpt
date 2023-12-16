@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 use deducnat_macro::EnumDoc;
+use strum::EnumIter;
 use crate::interpreter::InterpreterCommand;
 use crate::error::Error;
 
@@ -11,7 +12,7 @@ static COMMANDS: [&str; 5] = [
     "quit"
 ];
 
-#[derive(Clone, PartialEq, EnumDoc)]
+#[derive(Clone, PartialEq, EnumDoc, EnumIter)]
 pub enum ReplCommand {
     #[cmd(name="context", usage="<name>", desc="Create a new proof context")]
     Context(String),

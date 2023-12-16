@@ -1,4 +1,4 @@
 mod repl;
 mod command;
 
-pub use repl::Repl;
+pub use repl::*;

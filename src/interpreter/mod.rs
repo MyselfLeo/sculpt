@@ -3,5 +3,5 @@
 mod command;
 mod interpreter;
 
-pub use command::{InterpreterCommand, EngineCommand};
-pub use interpreter::Interpreter;
+pub use command::*;
+pub use interpreter::*;

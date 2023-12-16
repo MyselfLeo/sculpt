@@ -3,9 +3,10 @@ use std::io;
 use std::io::Write;
 use crossterm::cursor::MoveTo;
 use crossterm::{execute, terminal};
+use strum::IntoEnumIterator;
 use unicode_segmentation::UnicodeSegmentation;
 use crate::error::Error;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{Interpreter, EngineCommand, RuleCommand, InterpreterCommand};
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
 use crate::tools;
 
@@ -72,7 +73,7 @@ impl Repl {
     }
 
     pub fn get_valid_commands(&self) -> Vec<Command> {
-        let mut res = vec![Command::ReplCommand(ReplCommand::Quit)];
+        let mut res = vec![Command::ReplCommand(ReplCommand::Help), Command::ReplCommand(ReplCommand::Quit)];
         match &self.state {
             ReplState::Idle => {
                 res.push(Command::ReplCommand(ReplCommand::Context("".to_string())));
@@ -158,40 +159,54 @@ impl Repl {
             ReplState::Help(_) => {
                 titleline!();
 
-                println!("(F, G: Formula, T: Term, v: variable)");
+                println!("(F, G, H: Formula, T: Term, v: variable)");
                 println!();
 
                 println!("COMMANDS (more info with 'help [command]')");
                 println!();
 
-                // todo: query every command
+                let mut cmds = vec![];
+                for repl_command in ReplCommand::iter() {
+                    cmds.push(Command::ReplCommand(repl_command));
+                }
+                for engine_command in EngineCommand::iter() {
+                    cmds.push(Command::InterpreterCommand(InterpreterCommand::EngineCommand(engine_command)));
+                }
+                for rule_command in RuleCommand::iter() {
+                    cmds.push(Command::InterpreterCommand(InterpreterCommand::RuleCommand(rule_command)))
+                }
 
-                /*let strings = Command::iter()
+                let strings = cmds.iter()
                     .filter_map(|cmd| {
+                        let name_usg = match cmd.usage() {
+                            None => cmd.name(),
+                            Some(txt) => Some(format!("{} {txt}", cmd.name()?))
+                        };
+
                         let desc_fmt = |d| format!("-- {d}");
                         let desc = cmd.desc().map_or("".to_string(), desc_fmt);
-                        if let Some(n) = cmd.name() {
+                        if let Some(n) = name_usg {
                             Some((n, desc))
                         }
                         else {None}
                     })
-                    .map(|(name, desc)| format!("{:10} {}", name, desc))
+                    .map(|(name, desc)| format!("{:20} {}", name, desc))
                     .collect::<Vec<String>>();
 
                 let cols = tools::in_columns(&strings, terminal::size()?.0 as usize);
-                println!("{cols}");*/
+                println!("{cols}");
             }
 
 
 
             ReplState::CommandHelp(command, _) => {
                 titleline!();
-                println!("(F, G: Formula, T: Term, v: variable)");
+                println!("(F, G, H: Formula, T: Term, v: variable)");
                 println!();
 
-                if let Some(name) = command.name() {
-                    println!("COMMAND '{}'", name.to_uppercase());
-                }
+                let name = command.name().expect("Should not be able to reach command help if no name");
+
+                println!("COMMAND '{}'", name.to_uppercase());
 
                 if let Some(s) = command.desc() {
                     println!("{s}");
@@ -199,7 +214,7 @@ impl Repl {
                 println!();
 
                 if let Some(usg) = command.usage() {
-                    println!("USAGE: {usg}");
+                    println!("USAGE: {name} {usg}");
                 }
 
                 if let Some(schema) = command.schema() {
