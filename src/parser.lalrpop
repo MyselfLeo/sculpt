@@ -26,10 +26,10 @@ pub Variable: String = {
 
 pub Term: Box<Term> = {
     <v:Variable> => Box::new(Term::Variable(v.to_string())),
-    <n:r"[a-z][a-zA-Z0-9]+'*"> => Box::new(Term::Function(n.to_string(), vec![])),
+    <n:r"[_a-z][_a-zA-Z0-9]+'*"> => Box::new(Term::Function(n.to_string(), vec![])),
 
     <n:Variable> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v)),
-    <n:r"[a-z][a-zA-Z0-9]+'*"> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v))
+    <n:r"[_a-z][_a-zA-Z0-9]+'*"> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v))
 }
 
 

@@ -53,3 +53,15 @@ assume J \/ Z
 proof Z
 axiom
 qed
+
+
+
+forall x, (is_vegetarian(x) => ~has_meat(x))
+forall x, (~is_vegetarian(x) => has_meat(x))
+
+forall x, (is_hamburger(x) => is_sandwich(x))
+
+is_hamburger(bob) /\ ~is_vegetarian(bob)
+
+
+forall x, (is_sandwich(x) /\ has_meat(x) => is_hotdog(x))
