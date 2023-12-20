@@ -5,7 +5,7 @@ use crate::logic::Formula;
 use crate::proof::Proof;
 
 /// The interpreter accepts [InterpreterCommand] to build proofs.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Interpreter {
     pub name: String,
     pub context: Vec<Box<Formula>>,

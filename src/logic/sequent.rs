@@ -5,7 +5,7 @@ use crate::logic::Formula;
 use crate::logic::rule::RuleType;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Sequent {
     pub antecedents: Vec<Box<Formula>>,
     pub consequent: Box<Formula>

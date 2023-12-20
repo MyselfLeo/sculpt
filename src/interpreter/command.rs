@@ -29,7 +29,7 @@ static COMMANDS: [&str; 19] = [
 
 
 /// Control command for the interpreter. Create context, start proof, finish proof, etc.
-#[derive(Clone, EnumIter, EnumDoc, EnumType, PartialEq)]
+#[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum EngineCommand {
     //#[cmd(name="context", usage="<name>", desc="Create a new proof context")]
     //Context(String),
@@ -58,7 +58,7 @@ impl Display for EngineCommand {
 
 
 /// Command only available during a proof. Applies natural deduction rules.
-#[derive(Clone, EnumIter, EnumDoc, EnumType, PartialEq)]
+#[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum RuleCommand {
     #[cmd(name="axiom")]
     Axiom,
@@ -190,7 +190,7 @@ impl RuleCommandType {
 
 
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum InterpreterCommand {
     EngineCommand(EngineCommand),
     RuleCommand(RuleCommand)

@@ -1,0 +1,8 @@
+admit forall x, Athlete(x) => Fort(x).
+admit forall x, Intelligent(x) /\ Fort(x) => Carriere(x).
+admit Athlete(pierre) /\ Intelligent(pierre).
+
+
+proof Athlete(pierre) /\ Intelligent(pierre) => Carriere(pierre).
+intro.
+qed.

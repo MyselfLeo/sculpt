@@ -4,7 +4,7 @@ use crate::logic::{Formula, Sequent};
 use crate::logic::rule::{Rule, RuleType};
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Proof {
     pub goal: Formula,
     current_goal: Option<Box<Sequent>>,

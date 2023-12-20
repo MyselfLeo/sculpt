@@ -4,15 +4,17 @@ mod logic;
 mod interpreter;
 mod repl;
 mod error;
+mod exec;
 
 
+use std::fs;
 use error::Error;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(pub parser);
 
 use repl::Repl;
-
-
+use crate::exec::Executor;
+use crate::interpreter::Interpreter;
 
 
 fn start_repl() -> Result<(), Error> {
@@ -40,8 +42,21 @@ fn start_repl() -> Result<(), Error> {
 
 fn main() {
 
-    match start_repl() {
+    const FILE: &str = "examples/test.sculpt";
+
+    let mut exec= Executor::from_file(FILE.to_string()).unwrap();
+
+    match exec.exec_all() {
+        Ok(_) => {}
+        Err(e) => {
+            println!("ERROR: {}", e.0);
+            println!("  from {:?} to {:?}", e.1.start, e.1.end)
+        }
+    }
+
+
+    /*match start_repl() {
         Ok(_) => (),
         Err(e) => eprintln!("ERROR: {e}"),
-    }
+    }*/
 }
