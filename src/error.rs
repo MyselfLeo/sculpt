@@ -9,7 +9,9 @@ pub enum Error {
     ArgumentsRequired(String),  // No arguments given but arguments expected
     UnableToRead,               // I/O error
     UnknownCommand(String),     // Unknown command
-    EmptyFile(String)           // Empty file
+    EmptyFile(String),          // Empty file
+    UnfinishedProof,
+    UnexpectedEOF
 }
 
 impl Display for Error {
@@ -24,6 +26,8 @@ impl Display for Error {
             Error::UnableToRead => write!(f, "Unable to read input"),
             Error::UnknownCommand(c) => write!(f, "Command {c} does not exist"),
             Error::EmptyFile(name) => write!(f, "Empty file {name}"),
+            Error::UnfinishedProof => write!(f, "Unfinished proof"),
+            Error::UnexpectedEOF => write!(f, "Unexpected end-of-file. Have you forgot a '.' ?")
         }
     }
 }

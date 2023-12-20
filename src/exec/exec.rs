@@ -24,7 +24,9 @@ pub struct Executor {
 impl Executor {
     pub fn from_file(path: String) -> Result<Executor, Error> {
         let content = fs::read_to_string(&path).or_else(|_| Err(Error::UnableToRead))?;
-        let steps = Self::parse_steps(&content);
+        let steps = Self::parse_steps(&content)?;
+
+
         if steps.len() == 0 { return Err(Error::EmptyFile(path.clone())) }
 
         Ok(Executor {filepath: path, steps, current_step: 0})
@@ -51,6 +53,10 @@ impl Executor {
             };
         }
 
+        if interpreter.current_proof.is_some() {
+            return Err((Error::UnfinishedProof, self.steps.last().unwrap().clone()))
+        }
+
         return Ok(interpreter)
     }
 
@@ -61,7 +67,7 @@ impl Executor {
         path.file_name().map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string())
     }
 
-    fn parse_steps(content: &String) -> Vec<Step> {
+    fn parse_steps(content: &String) -> Result<Vec<Step>, Error> {
         let mut res = vec![];
 
         let mut line_nb = 0;
@@ -103,6 +109,10 @@ impl Executor {
             buf.push(c)
         }
 
-        return res
+        if !buf.is_empty() {
+            return Err(Error::UnexpectedEOF)
+        }
+
+        Ok(res)
     }
 }
