@@ -1,2 +1,6 @@
-proof (forall y, H(y) => M(y)) => H(socrate) => M(socrate).
+admit (A /\ J => Z).
+admit (J => A).
+admit (J \/ Z).
+
+proof Z.
 intros.

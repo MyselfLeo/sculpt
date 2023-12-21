@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 use crate::error::Error;
-use crate::interpreter::{Interpreter, InterpreterCommand};
+use crate::interpreter::{Interpreter, InterpreterCommand, InterpreterEffect};
 
 const STEP_SEP: char = '.';
 
@@ -18,7 +18,9 @@ pub struct Executor {
     pub filepath: String,
 
     pub steps: Vec<Step>,
-    current_step: usize
+    current_step: usize,
+
+    interpreter: Interpreter
 }
 
 impl Executor {
@@ -29,7 +31,11 @@ impl Executor {
 
         if steps.len() == 0 { return Err(Error::EmptyFile(path.clone())) }
 
-        Ok(Executor {filepath: path, steps, current_step: 0})
+        let filename = Path::new(&path)
+            .file_name()
+            .map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string());
+
+        Ok(Executor {filepath: path, steps, current_step: 0, interpreter: Interpreter::new(filename)})
     }
 
 
@@ -39,25 +45,30 @@ impl Executor {
 
 
 
-    pub fn exec_all(&mut self) -> Result<Interpreter, (Error, Step)> {
-        let mut interpreter = Interpreter::new(self.filename());
-
-        for s in &self.steps {
-            let cmd = match InterpreterCommand::from(&s.command_txt) {
-                Ok(c) => c,
+    pub fn exec_all(&mut self) -> Result<(), (Error, Step)> {
+        let steps = self.steps.clone();
+        for s in steps {
+            match self.exec_one(&s) {
+                Ok(_) => (),
                 Err(e) => return Err((e, s.clone()))
-            };
-            match interpreter.execute(cmd) {
-                Ok(()) => (),
-                Err(e) => return Err((e, s.clone()))
-            };
+            }
         }
 
-        if interpreter.current_proof.is_some() {
+        if self.interpreter.current_proof.is_some() {
             return Err((Error::UnfinishedProof, self.steps.last().unwrap().clone()))
         }
 
-        return Ok(interpreter)
+        Ok(())
+    }
+
+    fn exec_one(&mut self, step: &Step) -> Result<(), Error> {
+        let cmd = InterpreterCommand::from(&step.command_txt)?;
+        match self.interpreter.execute(cmd)? {
+            InterpreterEffect::NewFormula(f) => println!("Added `{f}` to context"),
+            _ => ()
+        };
+
+        Ok(())
     }
 
 

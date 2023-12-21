@@ -4,6 +4,18 @@ use super::{InterpreterCommand, EngineCommand};
 use crate::logic::Formula;
 use crate::proof::Proof;
 
+/// Effect that a command had on the interpreter status.
+/// Returned by Interpreter::execute
+#[derive(Clone, Debug)]
+pub enum InterpreterEffect {
+    NewFormula(Formula),
+    StartedProof,
+    AdvancedProof,
+    Nothing
+}
+
+
+
 /// The interpreter accepts [InterpreterCommand] to build proofs.
 #[derive(Clone, Debug)]
 pub struct Interpreter {
@@ -20,12 +32,13 @@ impl Interpreter {
 
 
 
-    /// Add a new assumption to the context. If it already exists,
-    /// does not add anything.
-    fn add_assumption(&mut self, assumption: Box<Formula>) {
+    /// Adds a new assumption to the context & return true.
+    /// If it already exists, returns false & does not add anything.
+    fn add_assumption(&mut self, assumption: Box<Formula>) -> bool {
         if !self.context.contains(&assumption) {
-            self.context.push(assumption)
-        }
+            self.context.push(assumption);
+            true
+        } else { false }
     }
 
 
@@ -55,7 +68,7 @@ impl Interpreter {
 
 
 
-    pub fn execute(&mut self, command: InterpreterCommand) -> Result<(), Error> {
+    pub fn execute(&mut self, command: InterpreterCommand) -> Result<InterpreterEffect, Error> {
         //let current_proof_cpy = self.current_proof.clone();
 
         match (&command, &mut self.current_proof) {
@@ -73,9 +86,12 @@ impl Interpreter {
                     Err(e) => return Err(Error::InvalidArguments(e))
                 };
 
-                self.add_assumption(formula);
                 self.command_stack.push(command);
-                Ok(())
+
+                match self.add_assumption(formula.clone()) {
+                    true => Ok(InterpreterEffect::NewFormula(*formula.to_owned())),
+                    false => Ok(InterpreterEffect::Nothing)
+                }
             }
 
 
@@ -94,7 +110,7 @@ impl Interpreter {
 
                 self.current_proof = Some(Box::new(Proof::start_with_antecedents(goal, self.context.clone())));
                 self.command_stack.push(command);
-                Ok(())
+                Ok(InterpreterEffect::StartedProof)
             }
 
 
@@ -103,7 +119,7 @@ impl Interpreter {
                 match p.apply(rule.clone().to_rule()) {
                     Ok(_) => {
                         self.command_stack.push(command);
-                        Ok(())
+                        Ok(InterpreterEffect::AdvancedProof)
                     },
                     Err(e) => Err(e)
                 }
@@ -114,14 +130,14 @@ impl Interpreter {
             (InterpreterCommand::EngineCommand(EngineCommand::Qed), None) => {
                 Err(Error::CommandError("No proof to finish".to_string()))
             }
-            (InterpreterCommand::EngineCommand(EngineCommand::Qed), Some(p)) => {
-                if p.is_finished() {
-                    self.context.push(Box::new(p.goal.clone()));
-                    self.current_proof = None;
+            (InterpreterCommand::EngineCommand(EngineCommand::Qed), p) => {
+                if p.as_ref().unwrap().is_finished() {
+                    self.context.push(Box::new(p.as_ref().unwrap().goal.clone()));
+                    *p = None;
                     self.command_stack.push(command);
-                    Ok(())
+                    Ok(InterpreterEffect::NewFormula(p.as_ref().unwrap().goal.clone()))
                 } else {
-                    let txt = match p.remaining_goals_nb() {
+                    let txt = match p.as_ref().unwrap().remaining_goals_nb() {
                         1 => "One goal has not been proven yet".to_string(),
                         e => format!("{e} goals have not been proven yet")
                     };
