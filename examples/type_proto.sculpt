@@ -1,0 +1,3 @@
+typ Number :: Z | S(Number).
+thm destroy_num :: forall Number n, forall Formula P(Number), P(Z) /\ (P(n) => P(S(n))) => P(n). admit.
+

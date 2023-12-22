@@ -1,6 +1,11 @@
-admit (A /\ J => Z).
-admit (J => A).
-admit (J \/ Z).
+thm a_and_j ::  A /\ J => Z.  admit.
+thm a_if_j  ::  J => A.       admit.
+thm j_or_z  ::  J \/ Z.       admit.
 
-proof Z.
-intros.
+
+thm zoe_va_paris :: Z.
+  use a_and_j.
+  use a_if_j.
+  use j_or_z.
+
+qed.
