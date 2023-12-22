@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use itertools::Itertools;
 use crate::error::Error;
 use crate::interpreter::command::{RuleCommandType, RuleCommandTypeDefault};
 use super::{InterpreterCommand, EngineCommand};
@@ -8,9 +10,9 @@ use crate::proof::Proof;
 /// Returned by Interpreter::execute
 #[derive(Clone, Debug)]
 pub enum InterpreterEffect {
-    NewFormula(Formula),
-    StartedProof,
-    AdvancedProof,
+    NewTheorem(Formula),
+    EnteredProofMode,
+    ExitedProofMode,
     Nothing
 }
 
@@ -20,38 +22,40 @@ pub enum InterpreterEffect {
 #[derive(Clone, Debug)]
 pub struct Interpreter {
     pub name: String,
-    pub context: Vec<Box<Formula>>,
-    pub current_proof: Option<Box<Proof>>,
+    pub context: HashMap<String, Box<Formula>>,
+    pub current_proof: Option<(String, Box<Proof>)>,
     command_stack: Vec<InterpreterCommand>
 }
 
 impl Interpreter {
     pub fn new(name: String) -> Interpreter {
-        Interpreter { name, context: vec![], current_proof: None, command_stack: vec![] }
+        Interpreter { name, context: HashMap::new(), current_proof: None, command_stack: vec![] }
     }
 
 
 
-    /// Adds a new assumption to the context & return true.
+    /*/// Adds a new assumption to the context & return true.
     /// If it already exists, returns false & does not add anything.
-    fn add_assumption(&mut self, assumption: Box<Formula>) -> bool {
-        if !self.context.contains(&assumption) {
+    fn add_assumption(&mut self, name: String, assumption: Box<Formula>) -> bool {
+        if !self.context.values().contains(&assumption) {
             self.context.push(assumption);
             true
         } else { false }
-    }
+    }*/
 
 
 
     pub fn get_valid_commands(&self) -> Vec<InterpreterCommand> {
         match &self.current_proof {
             None => vec![
-                InterpreterCommand::EngineCommand(EngineCommand::Admit("".to_string())),
-                InterpreterCommand::EngineCommand(EngineCommand::Proof("".to_string()))
+                InterpreterCommand::EngineCommand(EngineCommand::Theorem("".to_string(), "".to_string())),
             ],
-            Some(p) => {
+            Some((n, p)) => {
                 match p.get_applicable_rules() {
-                    None => vec![InterpreterCommand::EngineCommand(EngineCommand::Qed)],
+                    None => vec![
+                        InterpreterCommand::EngineCommand(EngineCommand::Qed),
+                        InterpreterCommand::EngineCommand(EngineCommand::Admit),
+                    ],
                     Some(ruletype) => {
                         ruletype
                             .iter()
@@ -73,7 +77,7 @@ impl Interpreter {
 
         match (&command, &mut self.current_proof) {
 
-            // Adding an assumption
+            /*// Adding an assumption
             (InterpreterCommand::EngineCommand(EngineCommand::Admit(_)), Some(_)) => {
                 Err(Error::CommandError("Cannot add an assumption during a proof".to_string()))
             }
@@ -92,58 +96,106 @@ impl Interpreter {
                     true => Ok(InterpreterEffect::NewFormula(*formula.to_owned())),
                     false => Ok(InterpreterEffect::Nothing)
                 }
-            }
+            }*/
 
 
             // Start of a proof
-            (InterpreterCommand::EngineCommand(EngineCommand::Proof(_)), Some(p)) => {
+            (InterpreterCommand::EngineCommand(EngineCommand::Theorem(..)), Some((_, p))) => {
                 Err(Error::CommandError(format!("Already proving {}", p.goal)))
             }
-            (InterpreterCommand::EngineCommand(EngineCommand::Proof(s)), None) if s.is_empty() => {
+            /*(InterpreterCommand::EngineCommand(EngineCommand::Theorem(..)), None) if s.is_empty() => {
                 return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
-            }
-            (InterpreterCommand::EngineCommand(EngineCommand::Proof(s)), None) => {
-                let goal = match Formula::from_str(&s) {
+            }*/
+            (InterpreterCommand::EngineCommand(EngineCommand::Theorem(name, form)), None) => {
+                if self.context.contains_key(name) {
+                    return Err(Error::AlreadyExists(name.clone()))
+                }
+
+                let goal = match Formula::from_str(&form) {
                     Ok(f) => f,
                     Err(e) => return Err(Error::InvalidArguments(e))
                 };
 
-                self.current_proof = Some(Box::new(Proof::start_with_antecedents(goal, self.context.clone())));
+                let proof = Proof::start(goal);
+
+                self.current_proof = Some((name.clone(), Box::new(proof)));
                 self.command_stack.push(command);
-                Ok(InterpreterEffect::StartedProof)
+                Ok(InterpreterEffect::EnteredProofMode)
             }
 
 
+            (InterpreterCommand::EngineCommand(EngineCommand::Use(s)), Some((_, ref mut p))) => {
+                if p.is_finished() {
+                    return Err(Error::CommandError("Proof is finished".to_string()))
+                }
+
+                match self.context.get(s) {
+                    None => return Err(Error::CommandError(format!("Unknown theorem {s}"))),
+                    Some(thm) => {
+                        p.add_antecedent(thm.clone())?;
+                        Ok(InterpreterEffect::Nothing)
+                    }
+                }
+            }
+
             // Rule application to a proof
-            (InterpreterCommand::RuleCommand(rule), Some(ref mut p)) => {
+            (InterpreterCommand::RuleCommand(rule), Some((_, ref mut p))) => {
                 match p.apply(rule.clone().to_rule()) {
                     Ok(_) => {
                         self.command_stack.push(command);
-                        Ok(InterpreterEffect::AdvancedProof)
+                        Ok(InterpreterEffect::ExitedProofMode)
                     },
                     Err(e) => Err(e)
                 }
             }
 
 
-            // Ending a proof
+            // Ending a proof using Qed
             (InterpreterCommand::EngineCommand(EngineCommand::Qed), None) => {
-                Err(Error::CommandError("No proof to finish".to_string()))
+                Err(Error::CommandError("Not in proof mode".to_string()))
             }
-            (InterpreterCommand::EngineCommand(EngineCommand::Qed), p) => {
-                if p.as_ref().unwrap().is_finished() {
-                    self.context.push(Box::new(p.as_ref().unwrap().goal.clone()));
-                    *p = None;
-                    self.command_stack.push(command);
-                    Ok(InterpreterEffect::NewFormula(p.as_ref().unwrap().goal.clone()))
-                } else {
-                    let txt = match p.as_ref().unwrap().remaining_goals_nb() {
-                        1 => "One goal has not been proven yet".to_string(),
-                        e => format!("{e} goals have not been proven yet")
-                    };
-                    Err(Error::CommandError(txt))
+            (InterpreterCommand::EngineCommand(EngineCommand::Qed), proof) => {
+                let proof_clone = proof.clone();
+
+                match proof_clone {
+                    None => unreachable!(),
+                    Some((n, p)) => {
+                        if p.is_finished() {
+                            self.context.insert(n, Box::new(p.goal.clone()));
+                            *proof = None;
+                            self.command_stack.push(command);
+                            Ok(InterpreterEffect::NewTheorem(p.goal))
+                        }
+                        else {
+                            let txt = match p.remaining_goals_nb() {
+                                1 => "One goal has not been proven yet".to_string(),
+                                n => format!("{n} goals have not been proven yet")
+                            };
+                            Err(Error::CommandError(txt))
+                        }
+                    }
                 }
             }
+
+
+            // Ending a proof with admit
+            (InterpreterCommand::EngineCommand(EngineCommand::Admit), None) => {
+                Err(Error::CommandError("Not in proof mode".to_string()))
+            }
+            (InterpreterCommand::EngineCommand(EngineCommand::Admit), proof) => {
+                let proof_clone = proof.clone();
+
+                match proof_clone {
+                    None => unreachable!(),
+                    Some((n, p)) => {
+                        self.context.insert(n, Box::new(p.goal.clone()));
+                        *proof = None;
+                        self.command_stack.push(command);
+                        Ok(InterpreterEffect::NewTheorem(p.goal))
+                    }
+                }
+            }
+
 
             // Shit happened
             (r, _) => {

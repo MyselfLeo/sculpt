@@ -28,15 +28,17 @@ static COMMANDS: [&str; 19] = [
 ];
 
 
-/// Control command for the interpreter. Create context, start proof, finish proof, etc.
+/// Control command for the interpreter. Those rules are not directly linked to natural deduction.
 #[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum EngineCommand {
 
-    #[cmd(name="proof", usage="<F>", desc="Start the proving process of F in the current context")]
-    Proof(String),
-    #[cmd(name="admit", usage="<F>", desc="Add an unproven assumption to the current context")]
-    Admit(String),
-    #[cmd(name="qed", desc="Finish the proof (only when no more subgoals)")]
+    #[cmd(name="Thm", usage="<thm_name> :: <F>", desc="Create a new theorem and start the proof mode")]
+    Theorem(String, String),
+    #[cmd(name="admit", desc="Consider the current goal proven, exit proof mode")]
+    Admit,
+    #[cmd(name="use", usage="use <thm_name>", desc="Adds a theorem to the proof context")]
+    Use(String),
+    #[cmd(name="qed", desc="Finish the proof & exit proof mode (only when no more subgoals)")]
     Qed
 }
 
@@ -44,8 +46,8 @@ impl Display for EngineCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             //InterpreterCommand::Context(s) => write!(f, "context {s}"),
-            EngineCommand::Proof(s) => write!(f, "proof {s}"),
-            EngineCommand::Admit(s) => write!(f, "admit {s}"),
+            EngineCommand::Theorem(name, formula) => write!(f, "Thm {name} :: {formula}"),
+            EngineCommand::Admit => write!(f, "admit"),
             e => match e.name() {
                 Some(n) => write!(f, "{n}"),
                 None => Ok(())
@@ -216,16 +218,18 @@ impl InterpreterCommand {
         let (cname, cparam) = command_str.split_once(' ').unwrap_or_else(|| (command_str, ""));
         let cparam = cparam.to_string();
 
-        let command = match (cname, cparam) {
+
+        todo!()
+        //let command = match (cname, cparam) {
 
             // Interpreter commands
             //("context", s) if s.len() > 0 => Command::Interpreter(InterpreterCommand::Context(s)),
-            ("admit", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Admit(s)),
+            /*("admit", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Admit),
             ("admit", s) if s.is_empty() => {
                 return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
 
-            ("proof", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Proof(s)),
+            ("proof", s) if !s.is_empty() => InterpreterCommand::EngineCommand(EngineCommand::Theorem(s)),
             ("proof", s) if s.is_empty() => {
                 return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
@@ -259,10 +263,10 @@ impl InterpreterCommand {
                     return Err(Error::InvalidCommand(cn.to_string()))
                 }
                 return Err(Error::UnknownCommand(cn.to_string()))
-            }
-        };
+            }*/
+        //};
 
-        Ok(command)
+        //Ok(command)
     }
 
 

@@ -11,7 +11,8 @@ pub enum Error {
     UnknownCommand(String),     // Unknown command
     EmptyFile(String),          // Empty file
     UnfinishedProof,
-    UnexpectedEOF
+    UnexpectedEOF,
+    AlreadyExists(String)
 }
 
 impl Display for Error {
@@ -27,7 +28,8 @@ impl Display for Error {
             Error::UnknownCommand(c) => write!(f, "Command {c} does not exist"),
             Error::EmptyFile(name) => write!(f, "Empty file {name}"),
             Error::UnfinishedProof => write!(f, "Unfinished proof"),
-            Error::UnexpectedEOF => write!(f, "Unexpected end-of-file. Have you forgot a '.' ?")
+            Error::UnexpectedEOF => write!(f, "Unexpected end-of-file. Have you forgot a '.' ?"),
+            Error::AlreadyExists(sym) => write!(f, "{sym} already exists")
         }
     }
 }

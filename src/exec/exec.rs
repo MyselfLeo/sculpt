@@ -64,7 +64,7 @@ impl Executor {
     fn exec_one(&mut self, step: &Step) -> Result<(), Error> {
         let cmd = InterpreterCommand::from(&step.command_txt)?;
         match self.interpreter.execute(cmd)? {
-            InterpreterEffect::NewFormula(f) => println!("Added `{f}` to context"),
+            InterpreterEffect::NewTheorem(f) => println!("Added `{f}` to context"),
             _ => ()
         };
 

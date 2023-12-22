@@ -256,14 +256,14 @@ impl Repl {
 
                         println!();
 
-                        println!("Context:");
-                        let assumptions = ctx.context.iter()
-                            .map(|f| f.to_string())
+                        println!("Theorems:");
+                        let theorems = ctx.context.iter()
+                            .map(|(n, f)| format!("{n} :: {f}"))
                             .collect::<Vec<_>>();
 
-                        println!("{}", tools::in_columns(&assumptions, terminal::size()?.0 as usize, ColumnJustification::Balanced));
+                        println!("{}", tools::in_columns(&theorems, terminal::size()?.0 as usize, ColumnJustification::Balanced));
                     }
-                    Some(p) => p.print(),
+                    Some((_, p)) => p.print(),
                 }
             }
 

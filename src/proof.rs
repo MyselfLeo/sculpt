@@ -14,7 +14,20 @@ pub struct Proof {
 
 
 impl Proof {
-    pub fn start_with_antecedents(goal: Box<Formula>, antecedents: Vec<Box<Formula>>) -> Proof {
+
+    pub fn start(goal: Box<Formula>) -> Proof {
+        let goal_seq = Sequent::new(vec![], goal.clone());
+
+        Proof {
+            goal: *goal.clone(),
+            current_goal: Some(Box::new(goal_seq)),
+            sub_goals: VecDeque::new(),
+            step: 0
+        }
+    }
+
+
+    /*pub fn start_with_antecedents(goal: Box<Formula>, antecedents: Vec<Box<Formula>>) -> Proof {
         let goal_seq = Sequent::new(antecedents, goal.clone());
 
         Proof {
@@ -22,6 +35,19 @@ impl Proof {
             current_goal: Some(Box::new(goal_seq)),
             sub_goals: VecDeque::new(),
             step: 0
+        }
+    }*/
+
+
+    pub fn add_antecedent(&mut self, ante: Box<Formula>) -> Result<(), Error> {
+        match self.current_goal {
+            None => return Err(Error::CommandError("Proof is finished".to_string())),
+            Some(ref mut cg) => {
+                if !cg.antecedents.contains(&ante) {
+                    cg.antecedents.push(ante);
+                }
+                Ok(())
+            }
         }
     }
 
