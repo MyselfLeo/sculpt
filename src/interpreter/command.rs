@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 use sculpt_macro::{EnumDoc, EnumType};
 use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
+use crate::logic::Formula;
 
 
 static COMMANDS: [&str; 19] = [
@@ -33,7 +34,7 @@ static COMMANDS: [&str; 19] = [
 pub enum EngineCommand {
 
     #[cmd(name="Thm", usage="<thm_name> :: <F>", desc="Create a new theorem and start the proof mode")]
-    Theorem(String, String),
+    Theorem(String, Box<Formula>),
     #[cmd(name="admit", desc="Consider the current goal proven, exit proof mode")]
     Admit,
     #[cmd(name="use", usage="use <thm_name>", desc="Adds a theorem to the proof context")]

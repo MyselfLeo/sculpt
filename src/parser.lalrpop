@@ -1,17 +1,15 @@
 use crate::logic::{Term, Formula};
+use crate::interpreter::InterpreterCommand;
+use lalrpop_util::ParseError;
 
 grammar;
 
-// Comma separated elements
-Comma<T>: Vec<T> = { // (1)
-    <mut v:(<T> ",")*> <e:T?> => match e { // (2)
-        None => v,
-        Some(e) => {
-            v.push(e);
-            v
-        }
-    }
-};
+
+
+pub Command: InterpreterCommand = {
+    "Thm" <n:r"[_a-z][_a-zA-Z0-9]+'*"> "::" <f:Formula> =>? InterpreterCommand::EngineCommand(EngineCommand::Theorem(
+}
+
 
 
 Terms = Comma<Term>;
@@ -67,3 +65,15 @@ BoolOp: Box<Formula> = {
     <f1:BoolOp> "\\/" <f2:PrimitiveFormula> => Box::new(Formula::Or(f1, f2)),
     <f:PrimitiveFormula> => f
 }
+
+
+// Comma separated elements
+Comma<T>: Vec<T> = { // (1)
+    <mut v:(<T> ",")*> <e:T?> => match e { // (2)
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
