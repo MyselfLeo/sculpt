@@ -31,8 +31,7 @@ static COMMANDS: [&str; 19] = [
 /// Control command for the interpreter. Create context, start proof, finish proof, etc.
 #[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum EngineCommand {
-    //#[cmd(name="context", usage="<name>", desc="Create a new proof context")]
-    //Context(String),
+
     #[cmd(name="proof", usage="<F>", desc="Start the proving process of F in the current context")]
     Proof(String),
     #[cmd(name="admit", usage="<F>", desc="Add an unproven assumption to the current context")]
