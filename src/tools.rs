@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, cmp::min};
 
 /// Return the formatted vec, putting sep between each values
 ///
@@ -17,10 +17,15 @@ pub fn list_str<E: Display>(vec: &Vec<E>, sep: &str) -> String {
     res
 }
 
+pub enum ColumnJustification {
+    Balanced,
+    Fill(usize)
+}
+
 
 /// Return the formatted elements of the vec, as two columns
 /// which each line of length width (excluding \n).
-pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize) -> String {
+pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustification) -> String {
     const SEP_SIZE: usize = 10;
 
     if vec.len() == 0 {return String::new()}
@@ -34,16 +39,34 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize) -> String {
         s.push_str("..");
     };
 
+    let right_nb = match just {
+        ColumnJustification::Balanced => {
+            vec.len().div_ceil(2)
+        },
+        ColumnJustification::Fill(x) => {
+            if x > vec.len() {0}
+            else {vec.len() - x}
+        },
+    };
+
     // Shorten the strings if required by the requested width
-    if width < (column_length * 2 + SEP_SIZE) {
+    if right_nb > 0 && width < (column_length * 2 + SEP_SIZE) {
         column_length = (width - SEP_SIZE) / 2;
         strings.iter_mut().for_each(|s| shorten(s, column_length));
     };
 
     // Split the elements in 2 columns
-    let nb = vec.len().div_ceil(2);
-    let left_col = &strings[0..nb];
-    let right_col = &strings[nb..];
+    let (left_col, right_col) = match just {
+        ColumnJustification::Balanced => {
+            let nb = vec.len().div_ceil(2);
+            (&strings[0..nb], &strings[nb..])
+        },
+        ColumnJustification::Fill(mut height) => {
+            height = min(height, vec.len());
+            (&strings[0..height], &strings[height..])
+        },
+    };
+
 
     let mut res = String::new();
 

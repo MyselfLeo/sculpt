@@ -36,3 +36,32 @@ P(x) /\ ~P(x) => falsum*
 
 
 (forall z, F(z)) => F(pierre)
+
+
+
+
+
+context test_1
+
+
+assume A /\ J => Z
+assume J => A
+assume J \/ Z
+
+
+
+proof Z
+axiom
+qed
+
+
+
+forall x, (IsVegetarian(x) => ~HasMeat(x))
+forall x, (~IsVegetarian(x) => HasMeat(x))
+
+forall x, (IsHamburger(x) => IsSandwich(x))
+
+IsHamburger(bob) /\ ~IsVegetarian(bob)
+
+
+forall x, (IsSandwich(x) /\ HasMeat(x) => IsHotdog(x))

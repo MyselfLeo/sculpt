@@ -1,11 +1,11 @@
 use std::fmt::Display;
 use strum::IntoEnumIterator;
 
-use crate::inductive::Formula;
-use crate::rule::{RuleType, RuleTypeDefault, RuleTypeIter};
+use crate::logic::Formula;
+use crate::logic::rule::RuleType;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Sequent {
     pub antecedents: Vec<Box<Formula>>,
     pub consequent: Box<Formula>

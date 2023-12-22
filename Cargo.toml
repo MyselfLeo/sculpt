@@ -1,6 +1,6 @@
 [package]
-name = "deducnat"
-version = "0.2.0"
+name = "sculpt"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,4 +15,4 @@ crossterm = "0.27.0"
 itertools = { version = "0.11.0", features = [] }
 unicode-segmentation = "1.10.1"
 strum = { version = "0.25", features = ["derive"] }
-deducnat-macro = { path = "deducnat-macro" }
+sculpt-macro = { path = "sculpt-macro" }

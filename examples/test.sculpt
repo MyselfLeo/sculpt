@@ -1,0 +1,10 @@
+Thm a_and_j ::  A /\ J => Z.  admit.
+Thm a_if_j  ::  J => A.       admit.
+Thm j_or_z  ::  J \/ Z.       admit.
+
+
+Thm zoe_va_paris :: Z.
+    use a_and_j.
+    use a_if_j.
+    use j_or_z.
+qed.
