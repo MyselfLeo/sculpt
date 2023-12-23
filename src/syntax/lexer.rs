@@ -29,14 +29,16 @@ const DEFAULT_RULES: [&str; 16] = [
     "from_bottom",
     "exfalso"
 ];
-const DEFAULT_SYMBOLS: [&str; 7] = [
+const SYMBOLS: [&str; 9] = [
     "~",
     "=>",
     "\\/",
     "/\\",
     "(",
     ")",
-    ","
+    ",",
+    ".",
+    "::"
 ];
 
 
@@ -74,9 +76,16 @@ pub enum Token {
     Term(String),       // Known term identifier
     Relation(String),   // Known relation identifier
     Ident(String),      // Unknown identifier (new term/relation, thm name, etc.)
-    Symbol(String),     // Non-alphanumeric symbol
+
+    Wave,               // ~
+    DoubleArrow,        // =>
+    Or,                 // \/
+    And,                // /\
+    OpenParen,          // (
+    CloseParen,         // )
+    Comma,              // ,
     Dot,                // .
-    DoubleComma         // ::
+    DoubleColon         // ::
 }
 
 
@@ -92,75 +101,111 @@ impl Context {
     }
 }
 
+#[derive(Debug)]
+enum BufState {
+    AlphaNum,
+    Sym,
+    Idle
+}
 
 pub struct Lexer {
     pub tokens: Vec<Spanned<Token, usize>>
 }
 
 impl Lexer {
-    pub fn lex(input: &str, context: &Context) -> Result<Self, ParserError> {
-        enum BufState {
-            AlphaNum,
-            Sym,
-            Idle
-        }
 
+    fn token_from_str(buf: &String, buf_state: &BufState, context: &Context) -> Option<Token> {
+        let res = match buf_state {
+            BufState::Idle => unreachable!(),
+            BufState::AlphaNum => {
+                if DEFAULT_KEYWORDS.contains(&buf.as_str()) {
+                    Token::Keyword(buf.to_string())
+                }
+                else if DEFAULT_RULES.contains(&buf.as_str()) {
+                    Token::RuleName(buf.clone())
+                }
+                else if context.terms.contains_key(buf) {
+                    Token::Term(buf.clone())
+                }
+                else if context.relations.contains_key(buf) {
+                    Token::Relation(buf.clone())
+                }
+                else {
+                    Token::Ident(buf.clone())
+                }
+            }
+
+            BufState::Sym => {
+                match buf.as_str() {
+                    "~" => Token::Wave,
+                    "=>" => Token::DoubleArrow,
+                    "\\/" => Token::Or,
+                    "/\\" => Token::And,
+                    "(" => Token::OpenParen,
+                    ")" => Token::CloseParen,
+                    "," => Token::Comma,
+                    "." => Token::Dot,
+                    "::" => Token::DoubleColon,
+                    e => return None
+                }
+            }
+        };
+
+        Some(res)
+    }
+
+
+    pub fn lex(input: &str, context: &Context) -> Result<Self, ParserError> {
         let mut buf_state = BufState::Idle;
         let mut buf = String::new();
-        let mut start: usize = 0;
-
+        let mut buf_start: usize = 0;
+        let mut line_skip = false;
 
         let mut tokens: Vec<Spanned<Token, usize>> = vec![];
 
-
-        let mut push_buf = |buf: &str, start: usize, end: usize, vec: &mut Vec<_>| {
-            let s = if buf == "::" { (start, Token::DoubleComma, end) }
-                else if DEFAULT_KEYWORDS.contains(&buf) { (start, Token::Keyword(buf.to_string()), end) }
-                else if DEFAULT_RULES.contains(&buf) { (start, Token::RuleName(buf.to_string()), end) }
-                else if DEFAULT_SYMBOLS.contains(&buf) { (start, Token::Symbol(buf.to_string()), end) }
-                else if context.terms.contains_key(buf) { (start, Token::Term(buf.to_string()), end) }
-                else if context.relations.contains_key(buf) { (start, Token::Relation(buf.to_string()), end) }
-                else { (start, Token::Ident(buf.to_string()), end) };
-
-            vec.push(s);
-        };
-
-
         'char_iter: for (i, c) in input.char_indices() {
+            macro_rules! push_buf {
+                () => {
+                    match Self::token_from_str(&buf, &buf_state, context) {
+                    None => {return Err(ParserError::UnknownToken((buf_start, buf.clone(), i-1)))},
+                    Some(t) => {
+                        tokens.push((buf_start, t, i-1));
+                        buf.clear();
+                        buf_start = i;
+                    }
+                }
+                };
+            }
+
+            if c == '\n' {
+                line_skip = false;
+                continue
+            }
+
+            if line_skip { continue }
+
             // When the start of a comment is encountered, clean current buf and return early
             if buf == COMMENT_START {
-                break 'char_iter;
-            }
-
-
-
-            /*// end buffer early if starting with a symbol
-            // allow to separate '/\foo' as '/\' & 'foo'
-            if DEFAULT_SYMBOLS.contains(&buf.as_str()) {
-                tokens.push(Ok((start, Token::Symbol(buf.clone()), i-1)));
-
                 buf.clear();
-                start = i+1;
-                continue 'char_iter;
-            }*/
-
-            if c == '.' {
-                if !buf.is_empty() {
-                    push_buf(&buf, start, i-1, &mut tokens);
-                    buf.clear();
-                }
-                tokens.push((i, Token::Dot, i));
-                start = i+1;
                 buf_state = BufState::Idle;
+                line_skip = true;
                 continue 'char_iter;
             }
+
+            if SYMBOLS.contains(&buf.as_str()) {
+                push_buf!();
+                buf.clear();
+                buf_start = i;
+                buf_state = BufState::Idle;
+            }
+
 
             if c.is_whitespace() {
                 if !buf.is_empty() {
-                    push_buf(&buf, start, i-1, &mut tokens);
+                    push_buf!();
                     buf.clear();
                 }
-                start = i+1;
+                buf_start = i+1;
                 buf_state = BufState::Idle;
                 continue 'char_iter;
             }
@@ -169,20 +214,22 @@ impl Lexer {
             // (operators) to be written with no space between them
             if is_ident_allowed(c) {
                 match buf_state {
-                    BufState::Idle | BufState::AlphaNum => (),
+                    BufState::Idle => buf_start = i,
+                    BufState::AlphaNum => (),
                     BufState::Sym => {
-                        push_buf(&buf, start, i-1, &mut tokens);
-                        start = i+1;
+                        push_buf!();
+                        buf_start = i;
                     }
                 }
                 buf_state = BufState::AlphaNum;
             }
             else {
                 match buf_state {
-                    BufState::Idle | BufState::Sym => (),
+                    BufState::Idle => buf_start = i,
+                    BufState::Sym => (),
                     BufState::AlphaNum => {
-                        push_buf(&buf, start, i-1, &mut tokens);
-                        start = i+1;
+                        push_buf!();
+                        buf_start = i;
                     }
                 }
                 buf_state = BufState::Sym;
@@ -190,10 +237,20 @@ impl Lexer {
 
 
             buf.push(c);
-            start = i;
         }
 
-        push_buf(&buf, start, input.len()-1, &mut tokens)?;
+
+        if !buf.is_empty() {
+            match Self::token_from_str(&buf, &buf_state, context) {
+                None => {
+                    return Err(ParserError::UnknownToken((buf_start, buf.clone(), input.len() - 1)))
+                },
+                Some(t) => {
+                    tokens.push((buf_start, t, input.len() - 1));
+                }
+            };
+        }
+        //push_buf(&buf, buf_start, input.len()-1, &mut tokens)?;
 
         Ok(Lexer{tokens})
     }

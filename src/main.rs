@@ -50,7 +50,6 @@ fn main() {
     context.relations.insert("Z".to_string(), 0);
     let res = Lexer::lex(txt.as_ref(), &Context::new()).unwrap();
 
-    println!("{:?}", res.tokens);
 
     /*let mut exec= Executor::from_file(FILE.to_string()).unwrap();
 
