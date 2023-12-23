@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use crate::{parser, tools};
+use crate::{syntax::parser, tools};
 
 /// First-order logic term, that is either a variable or a function.
 /// Functions with no arguments are constants.

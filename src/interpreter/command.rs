@@ -34,7 +34,7 @@ static COMMANDS: [&str; 19] = [
 pub enum EngineCommand {
 
     #[cmd(name="Thm", usage="<thm_name> :: <F>", desc="Create a new theorem and start the proof mode")]
-    Theorem(String, Box<Formula>),
+    Theorem(String, String),
     #[cmd(name="admit", desc="Consider the current goal proven, exit proof mode")]
     Admit,
     #[cmd(name="use", usage="use <thm_name>", desc="Adds a theorem to the proof context")]

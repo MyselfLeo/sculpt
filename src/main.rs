@@ -5,16 +5,14 @@ mod interpreter;
 mod repl;
 mod error;
 mod exec;
-
+mod syntax;
 
 use std::fs;
 use error::Error;
-use lalrpop_util::lalrpop_mod;
-lalrpop_mod!(pub parser);
 
 use repl::Repl;
 use crate::exec::Executor;
-use crate::interpreter::Interpreter;
+use crate::syntax::lexer::{Context, Lexer};
 
 
 fn start_repl() -> Result<(), Error> {
@@ -44,7 +42,17 @@ fn main() {
 
     const FILE: &str = "examples/test.sculpt";
 
-    let mut exec= Executor::from_file(FILE.to_string()).unwrap();
+    let txt = fs::read_to_string(FILE).unwrap();
+
+    let mut context = Context::new();
+    context.relations.insert("A".to_string(), 0);
+    context.relations.insert("J".to_string(), 0);
+    context.relations.insert("Z".to_string(), 0);
+    let res = Lexer::lex(txt.as_ref(), &Context::new()).unwrap();
+
+    println!("{:?}", res.tokens);
+
+    /*let mut exec= Executor::from_file(FILE.to_string()).unwrap();
 
     match exec.exec_all() {
         Ok(_) => {}
@@ -52,7 +60,7 @@ fn main() {
             println!("ERROR: {}", e.0);
             println!("  from {:?} to {:?}", e.1.start, e.1.end)
         }
-    }
+    }*/
 
 
     /*match start_repl() {

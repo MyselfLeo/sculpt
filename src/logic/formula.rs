@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use crate::{parser, tools};
+use crate::{syntax::parser, tools};
 use crate::logic::term::Term;
 
 /// First-order logic formula

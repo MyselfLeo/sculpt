@@ -6,12 +6,6 @@ grammar;
 
 
 
-pub Command: InterpreterCommand = {
-    "Thm" <n:r"[_a-z][_a-zA-Z0-9]+'*"> "::" <f:Formula> =>? InterpreterCommand::EngineCommand(EngineCommand::Theorem(
-}
-
-
-
 Terms = Comma<Term>;
 Formulas = Comma<Formula>;
 
