@@ -72,7 +72,12 @@ pub type Spanned<Token, Loc> = (Loc, Token, Loc);
 
 #[derive(Debug)]
 pub enum Token {
-    Keyword(String),    // Keyword
+    Def,
+    Thm,
+    Admit,
+    Qed,
+    Use,
+
     RuleName(String),   // Known rule name
     Term(String),       // Known term identifier
     Relation(String),   // Known relation identifier
@@ -165,10 +170,16 @@ impl<'input> Lexer<'input> {
         let res = match buf_state {
             BufState::Idle => unreachable!(),
             BufState::AlphaNum => {
-                if DEFAULT_KEYWORDS.contains(&buf.as_str()) {
-                    Token::Keyword(buf.to_string())
-                }
-                else if DEFAULT_RULES.contains(&buf.as_str()) {
+                match buf.as_str() {
+                    "Def" => return Some(Token::Def),
+                    "Thm" => return Some(Token::Thm),
+                    "Admit" => return Some(Token::Admit),
+                    "Qed" => return Some(Token::Qed),
+                    "Use" => return Some(Token::Use),
+                    _ => ()
+                };
+
+                if DEFAULT_RULES.contains(&buf.as_str()) {
                     Token::RuleName(buf.clone())
                 }
                 else if context.terms.contains_key(buf) {

@@ -7,7 +7,12 @@ Thm j_or_z  ::  J \/ Z.       Admit.
 
 
 Thm zoe_va_paris :: Z.
-    use a_and_j.
-    use a_if_j.
-    use j_or_z.
+    Use a_and_j.
+    Use a_if_j.
+    Use j_or_z.
+
+    trans.
+    from_or A \/ J.
+    intros.
+    and_left.
 Qed.
