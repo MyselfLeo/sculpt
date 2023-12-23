@@ -48,7 +48,13 @@ fn main() {
     context.relations.insert("A".to_string(), 0);
     context.relations.insert("J".to_string(), 0);
     context.relations.insert("Z".to_string(), 0);
-    let res = Lexer::lex(txt.as_ref(), &Context::new()).unwrap();
+    let res = Lexer::from(txt.as_ref(), Context::new());
+
+    //println!("{}", ','.is_whitespace())
+
+    for t in res {
+        println!("{:?}", t.unwrap())
+    }
 
 
     /*let mut exec= Executor::from_file(FILE.to_string()).unwrap();

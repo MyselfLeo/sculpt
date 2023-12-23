@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
+use std::str::CharIndices;
 
 // Those may be expanded by code later (extensions, custom rule definition maybe?)
 const DEFAULT_KEYWORDS: [&str; 4] = ["Def", "Thm", "Admit", "Qed"];
@@ -108,11 +109,57 @@ enum BufState {
     Idle
 }
 
-pub struct Lexer {
-    pub tokens: Vec<Spanned<Token, usize>>
+pub struct Lexer<'input> {
+    //pub tokens: Vec<Spanned<Token, usize>>,
+
+    total_length: usize,
+    iterator: CharIndices<'input>,
+    buf_state: BufState,
+    buf: String,
+    buf_start: usize,
+    curr_pos: usize,
+    line_skip: bool,
+    context: Context
 }
 
-impl Lexer {
+impl<'input> Lexer<'input> {
+    pub fn from(s: &'input str, context: Context) -> Self {
+        Self {
+            total_length: s.len(),
+            iterator: s.char_indices(),
+            buf_state: BufState::Idle,
+            buf: String::new(),
+            buf_start: 0,
+            curr_pos: 0,
+            line_skip: false,
+            context
+        }
+    }
+
+
+    pub fn set_context(&mut self, context: Context) {
+        self.context = context;
+    }
+
+
+
+    fn consume_buf(&mut self) -> Result<Spanned<Token, usize>, ParserError> {
+        match Self::token_from_str(&self.buf, &self.buf_state, &self.context) {
+            None => {
+                Err(ParserError::UnknownToken((self.buf_start, self.buf.clone(), self.curr_pos - 1)))
+            },
+            Some(t) => {
+                let res = (self.buf_start, t, self.curr_pos - 1);
+                self.buf.clear();
+                self.buf_start = self.curr_pos;
+                self.buf_state = BufState::Idle;
+                Ok(res)
+            }
+        }
+    }
+
+
+
 
     fn token_from_str(buf: &String, buf_state: &BufState, context: &Context) -> Option<Token> {
         let res = match buf_state {
@@ -153,117 +200,93 @@ impl Lexer {
 
         Some(res)
     }
-
-
-    pub fn lex(input: &str, context: &Context) -> Result<Self, ParserError> {
-        let mut buf_state = BufState::Idle;
-        let mut buf = String::new();
-        let mut buf_start: usize = 0;
-        let mut line_skip = false;
-
-        let mut tokens: Vec<Spanned<Token, usize>> = vec![];
-
-        'char_iter: for (i, c) in input.char_indices() {
-            macro_rules! push_buf {
-                () => {
-                    match Self::token_from_str(&buf, &buf_state, context) {
-                    None => {return Err(ParserError::UnknownToken((buf_start, buf.clone(), i-1)))},
-                    Some(t) => {
-                        tokens.push((buf_start, t, i-1));
-                        buf.clear();
-                        buf_start = i;
-                    }
-                }
-                };
-            }
-
-            if c == '\n' {
-                line_skip = false;
-                continue
-            }
-
-            if line_skip { continue }
-
-            // When the start of a comment is encountered, clean current buf and return early
-            if buf == COMMENT_START {
-                buf.clear();
-                buf_state = BufState::Idle;
-                line_skip = true;
-                continue 'char_iter;
-            }
-
-            if SYMBOLS.contains(&buf.as_str()) {
-                push_buf!();
-                buf.clear();
-                buf_start = i;
-                buf_state = BufState::Idle;
-            }
-
-
-            if c.is_whitespace() {
-                if !buf.is_empty() {
-                    push_buf!();
-                    buf.clear();
-                }
-                buf_start = i+1;
-                buf_state = BufState::Idle;
-                continue 'char_iter;
-            }
-
-            // buf state is used to allow alphanumeric tokens (idents) and symbolic tokens
-            // (operators) to be written with no space between them
-            if is_ident_allowed(c) {
-                match buf_state {
-                    BufState::Idle => buf_start = i,
-                    BufState::AlphaNum => (),
-                    BufState::Sym => {
-                        push_buf!();
-                        buf_start = i;
-                    }
-                }
-                buf_state = BufState::AlphaNum;
-            }
-            else {
-                match buf_state {
-                    BufState::Idle => buf_start = i,
-                    BufState::Sym => (),
-                    BufState::AlphaNum => {
-                        push_buf!();
-                        buf_start = i;
-                    }
-                }
-                buf_state = BufState::Sym;
-            }
-
-
-            buf.push(c);
-        }
-
-
-        if !buf.is_empty() {
-            match Self::token_from_str(&buf, &buf_state, context) {
-                None => {
-                    return Err(ParserError::UnknownToken((buf_start, buf.clone(), input.len() - 1)))
-                },
-                Some(t) => {
-                    tokens.push((buf_start, t, input.len() - 1));
-                }
-            };
-        }
-        //push_buf(&buf, buf_start, input.len()-1, &mut tokens)?;
-
-        Ok(Lexer{tokens})
-    }
 }
 
 
 
-/*
-impl IntoIterator for Lexer {
-    type Item = Spanned<Token, usize>;
-    type IntoIter = Vec<>::IntoIter<Self::Item>;
 
-    fn into_iter(&self) -> Self::IntoIter {
-        self.tokens.into_iter()
+impl<'input> Iterator for Lexer<'input> {
+    type Item = Result<Spanned<Token, usize>, ParserError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        'char_iter:
+        while let Some((i, c)) = self.iterator.next() {
+            let mut to_be_yield = None;
+
+            self.curr_pos = i;
+
+            if c == '\n' {
+                self.line_skip = false;
+                continue
+            }
+
+            if self.line_skip { continue }
+
+            // When the start of a comment is encountered, clean current buf and return early
+            if self.buf == COMMENT_START {
+                self.buf.clear();
+                self.buf_state = BufState::Idle;
+                self.line_skip = true;
+                continue 'char_iter;
+            }
+
+            if SYMBOLS.contains(&self.buf.as_str()) {
+                let res = self.consume_buf();
+                self.buf_state = BufState::Idle;
+                to_be_yield = Some(res);
+            }
+
+            if c.is_whitespace() {
+                if !self.buf.is_empty() {
+                    to_be_yield = Some(self.consume_buf())
+                };
+            }
+
+            // buf state is used to allow alphanumeric tokens (idents) and symbolic tokens
+            // (operators) to be written with no space between them
+            else {
+                if is_ident_allowed(c) {
+                    match self.buf_state {
+                        BufState::AlphaNum => (),
+                        BufState::Idle => {
+                            self.buf_state = BufState::AlphaNum;
+                            self.buf_start = i;
+                        },
+                        BufState::Sym => {
+                            let tok = self.consume_buf();
+                            self.buf_state = BufState::AlphaNum;
+                            to_be_yield = Some(tok);
+                        }
+                    }
+                }
+                else {
+                    match self.buf_state {
+                        BufState::Sym => (),
+                        BufState::Idle => {
+                            self.buf_start = i;
+                            self.buf_state = BufState::Sym;
+                        },
+                        BufState::AlphaNum => {
+                            let tok = self.consume_buf();
+                            self.buf_state = BufState::Sym;
+                            to_be_yield = Some(tok);
+                        }
+                    }
+                }
+
+                self.buf.push(c);
+            };
+
+            if to_be_yield.is_some() {
+                return to_be_yield;
+            }
+        }
+
+        if !self.buf.is_empty() {
+            self.curr_pos += 1;
+            Some(self.consume_buf())
+        } else {
+            None
+        }
     }
-}*/
+}
