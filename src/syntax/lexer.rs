@@ -55,14 +55,14 @@ pub fn is_ident_allowed(c: char) -> bool {
 }
 
 
-pub enum ParserError {
+pub enum LexicalError {
     UnknownToken(Spanned<String, usize>)
 }
 
-impl Debug for ParserError {
+impl Debug for LexicalError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParserError::UnknownToken(s) => write!(f, "Unknown token '{}'", s.1)
+            LexicalError::UnknownToken(s) => write!(f, "Unknown token '{}'", s.1)
         }
     }
 }
@@ -83,6 +83,9 @@ pub enum Token {
     Relation(String),   // Known relation identifier
     Ident(String),      // Unknown identifier (new term/relation, thm name, etc.)
 
+    Falsum,
+    Exists,
+    Forall,
     Wave,               // ~
     DoubleArrow,        // =>
     Or,                 // \/
@@ -148,10 +151,10 @@ impl<'input> Lexer<'input> {
 
 
 
-    fn consume_buf(&mut self) -> Result<Spanned<Token, usize>, ParserError> {
+    fn consume_buf(&mut self) -> Result<Spanned<Token, usize>, LexicalError> {
         match Self::token_from_str(&self.buf, &self.buf_state, &self.context) {
             None => {
-                Err(ParserError::UnknownToken((self.buf_start, self.buf.clone(), self.curr_pos - 1)))
+                Err(LexicalError::UnknownToken((self.buf_start, self.buf.clone(), self.curr_pos - 1)))
             },
             Some(t) => {
                 let res = (self.buf_start, t, self.curr_pos - 1);
@@ -176,6 +179,10 @@ impl<'input> Lexer<'input> {
                     "Admit" => return Some(Token::Admit),
                     "Qed" => return Some(Token::Qed),
                     "Use" => return Some(Token::Use),
+
+                    "falsum" => return Some(Token::Falsum),
+                    "exists" => return Some(Token::Exists),
+                    "forall" => return Some(Token::Forall),
                     _ => ()
                 };
 
@@ -217,7 +224,7 @@ impl<'input> Lexer<'input> {
 
 
 impl<'input> Iterator for Lexer<'input> {
-    type Item = Result<Spanned<Token, usize>, ParserError>;
+    type Item = Result<Spanned<Token, usize>, LexicalError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         'char_iter:

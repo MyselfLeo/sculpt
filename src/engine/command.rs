@@ -3,6 +3,7 @@ use strum::EnumIter;
 use sculpt_macro::{EnumDoc, EnumType};
 use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
 use crate::logic::Formula;
+use crate::syntax::lexer::Lexer;
 
 
 static COMMANDS: [&str; 19] = [
@@ -211,7 +212,17 @@ impl Display for EngineCommand {
 impl EngineCommand {
     /// Creates a command from a string. Typically, this string will either be a line from a file,
     /// or the command read by a REPL.
-    pub fn from(command_str: &str) -> Result<EngineCommand, Error> {
+
+
+
+    pub fn parse(command: &mut Lexer) -> Result<EngineCommand, Error> {
+        todo!()
+    }
+
+
+
+
+    /*pub fn from(command_str: &str) -> Result<EngineCommand, Error> {
         let command_str = command_str.trim();
         if command_str.is_empty() {return Err(Error::EmptyCommand)}
 
@@ -268,7 +279,7 @@ impl EngineCommand {
         //};
 
         //Ok(command)
-    }
+    }*/
 
 
 

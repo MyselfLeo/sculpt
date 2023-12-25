@@ -1,69 +1,70 @@
 use crate::logic::{Term, Formula};
-use crate::interpreter::InterpreterCommand;
+use crate::interpreter::{EngineCommand, ContextCommand, RuleCommand};
+use crate::syntax::lexer;
 use lalrpop_util::ParseError;
 
 grammar;
 
 
 
-Terms = Comma<Term>;
-Formulas = Comma<Formula>;
+
+
+
+Terms = CommaSep<Term>;
+Formulas = CommaSep<Formula>;
 
 
 pub Variable: String = {
-    <s:r"[a-z]'*"> => s.to_string()
+    <s:Ident> => s.to_string()
 }
 
 
 
 pub Term: Box<Term> = {
-    <v:Variable> => Box::new(Term::Variable(v.to_string())),
-    <n:r"[_a-z][_a-zA-Z0-9]+'*"> => Box::new(Term::Function(n.to_string(), vec![])),
-
-    <n:Variable> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v)),
-    <n:r"[_a-z][_a-zA-Z0-9]+'*"> "(" <v:Terms> ")" => Box::new(Term::Function(n.to_string(), v))
+    <n:TermName> => Box::new(Term::Function(n.to_string(), vec![])),
+    <n:TermName> OpenParen <v:Terms> CloseParen => Box::new(Term::Function(n.to_string(), v))
 }
 
 
 
 pub Formula: Box<Formula> = {
     <f:Implication> => f,
-    "exists" <v:Variable> "," <f:Formula> => Box::new(Formula::Exists(v.to_string(), f)),
-    "forall" <v:Variable> "," <f:Formula> => Box::new(Formula::Forall(v.to_string(), f)),
+    Exists <v:Variable> Comma <f:Formula> => Box::new(Formula::Exists(v.to_string(), f)),
+    Forall <v:Variable> Comma <f:Formula> => Box::new(Formula::Forall(v.to_string(), f)),
 }
 
 
 PrimitiveFormula: Box<Formula> = {
-    <n:r"[A-Z][a-zA-Z0-9]*'*"> => Box::new(Formula::Relation(n.to_string(), vec![])),
-    <n:r"[A-Z][a-zA-Z0-9]*'*"> "(" <v:Terms> ")" => Box::new(Formula::Relation(n.to_string(), v)),
+    <n:RelationName> => Box::new(Formula::Relation(n.to_string(), vec![])),
+    <n:RelationName> OpenParen <v:Terms> CloseParen => Box::new(Formula::Relation(n.to_string(), v)),
     <f:Parenthesized> => f,
-    "~" <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
-    "falsum" => Box::new(Formula::Falsum),
+    Wave <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
+    Falsum => Box::new(Formula::Falsum),
 }
 
 
 Parenthesized: Box<Formula> = {
-    "(" <f:Formula> ")" => f
+    OpenParen <f:Formula> CloseParen => f
 }
 
 
 
 Implication: Box<Formula> = {
-    <f1:BoolOp> "=>" <f2:Implication> => Box::new(Formula::Implies(f1, f2)),
+    <f1:BoolOp> DoubleArrow <f2:Implication> => Box::new(Formula::Implies(f1, f2)),
     <f:BoolOp> => f,
 }
 
 
 BoolOp: Box<Formula> = {
-    <f1:BoolOp> "/\\" <f2:PrimitiveFormula> => Box::new(Formula::And(f1, f2)),
-    <f1:BoolOp> "\\/" <f2:PrimitiveFormula> => Box::new(Formula::Or(f1, f2)),
+    <f1:BoolOp> And <f2:PrimitiveFormula> => Box::new(Formula::And(f1, f2)),
+    <f1:BoolOp> Or <f2:PrimitiveFormula> => Box::new(Formula::Or(f1, f2)),
     <f:PrimitiveFormula> => f
 }
 
 
 // Comma separated elements
-Comma<T>: Vec<T> = { // (1)
-    <mut v:(<T> ",")*> <e:T?> => match e { // (2)
+CommaSep<T>: Vec<T> = { // (1)
+    <mut v:(<T> Comma)*> <e:T?> => match e { // (2)
         None => v,
         Some(e) => {
             v.push(e);
@@ -71,3 +72,34 @@ Comma<T>: Vec<T> = { // (1)
         }
     }
 };
+
+
+// Import custom lexer
+extern {
+    type Location = usize;
+    type Error = lexer::LexicalError;
+
+    enum lexer::Token {
+        Def => lexer::Token::Def,
+        Thm => lexer::Token::Thm,
+        Admit => lexer::Token::Admit,
+        Qed => lexer::Token::Qed,
+        Use => lexer::Token::Use,
+        RuleName => lexer::Token::RuleName(String),
+        TermName => lexer::Token::Term(String),
+        RelationName => lexer::Token::Relation(String),
+        Ident => lexer::Token::Ident(String),
+        Falsum => lexer::Token::Falsum,
+        Exists => lexer::Token::Exists,
+        Forall => lexer::Token::Forall,
+        Wave => lexer::Token::Wave,
+        DoubleArrow => lexer::Token::DoubleArrow,
+        Or => lexer::Token::Or,
+        And => lexer::Token::And,
+        OpenParen => lexer::Token::OpenParen,
+        CloseParen => lexer::Token::CloseParen,
+        Comma => lexer::Token::Comma,
+        Dot => lexer::Token::Dot,
+        DoubleColon => lexer::Token::DoubleColon
+    }
+}
