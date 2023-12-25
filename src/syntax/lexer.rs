@@ -1,6 +1,6 @@
 //! Custom lexer passed to LALRPOP to parse the commands.
 //! The need of a custom lexer comes from the fact that some tokens may have different semantics
-//! depending on the state of the interpreter, notably identifiers which needs to have their type
+//! depending on the state of the engine, notably identifiers which needs to have their type
 //! defined (terms, propositions, etc).
 //! Note that this parser does not parse REPL-specific commands (exit, help, etc). Those are managed
 //! by the REPL itself.

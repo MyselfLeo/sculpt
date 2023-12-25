@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 use itertools::Itertools;
 use crate::error::Error;
-use crate::interpreter::command::{RuleCommandType, RuleCommandTypeDefault};
-use super::{InterpreterCommand, EngineCommand};
+use crate::engine::command::{RuleCommandType, RuleCommandTypeDefault};
+use super::{EngineCommand, ContextCommand};
 use crate::logic::Formula;
 use crate::proof::Proof;
 
-/// Effect that a command had on the interpreter status.
-/// Returned by Interpreter::execute
+/// Effect that a command had on the engine status.
+/// Returned by Engine::execute
 #[derive(Clone, Debug)]
-pub enum InterpreterEffect {
+pub enum EngineEffect {
     NewTheorem(Formula),
     EnteredProofMode,
     ExitedProofMode,
@@ -18,18 +18,18 @@ pub enum InterpreterEffect {
 
 
 
-/// The interpreter accepts [InterpreterCommand] to build proofs.
+/// The engine accepts [EngineCommand] to build proofs.
 #[derive(Clone, Debug)]
-pub struct Interpreter {
+pub struct Engine {
     pub name: String,
     pub context: HashMap<String, Box<Formula>>,
     pub current_proof: Option<(String, Box<Proof>)>,
-    command_stack: Vec<InterpreterCommand>
+    command_stack: Vec<EngineCommand>
 }
 
-impl Interpreter {
-    pub fn new(name: String) -> Interpreter {
-        Interpreter { name, context: HashMap::new(), current_proof: None, command_stack: vec![] }
+impl Engine {
+    pub fn new(name: String) -> Engine {
+        Engine { name, context: HashMap::new(), current_proof: None, command_stack: vec![] }
     }
 
 
@@ -45,16 +45,16 @@ impl Interpreter {
 
 
 
-    pub fn get_valid_commands(&self) -> Vec<InterpreterCommand> {
+    pub fn get_valid_commands(&self) -> Vec<EngineCommand> {
         match &self.current_proof {
             None => vec![
-                InterpreterCommand::EngineCommand(EngineCommand::Theorem("".to_string(), "".to_string())),
+                EngineCommand::EngineCommand(ContextCommand::Theorem("".to_string(), "".to_string())),
             ],
-            Some((n, p)) => {
+            Some((_, p)) => {
                 match p.get_applicable_rules() {
                     None => vec![
-                        InterpreterCommand::EngineCommand(EngineCommand::Qed),
-                        InterpreterCommand::EngineCommand(EngineCommand::Admit),
+                        EngineCommand::EngineCommand(ContextCommand::Qed),
+                        EngineCommand::EngineCommand(ContextCommand::Admit),
                     ],
                     Some(ruletype) => {
                         ruletype
@@ -62,7 +62,7 @@ impl Interpreter {
                             .map(|rt| RuleCommandType::from_rule(rt))
                             .flatten()
                             .map(|t| t.get_default())
-                            .map(|rc| InterpreterCommand::RuleCommand(rc))
+                            .map(|rc| EngineCommand::RuleCommand(rc))
                             .collect::<Vec<_>>()
                     }
                 }
@@ -72,7 +72,7 @@ impl Interpreter {
 
 
 
-    pub fn execute(&mut self, command: InterpreterCommand) -> Result<InterpreterEffect, Error> {
+    pub fn execute(&mut self, command: EngineCommand) -> Result<EngineEffect, Error> {
         //let current_proof_cpy = self.current_proof.clone();
 
         match (&command, &mut self.current_proof) {
@@ -100,13 +100,13 @@ impl Interpreter {
 
 
             // Start of a proof
-            (InterpreterCommand::EngineCommand(EngineCommand::Theorem(..)), Some((_, p))) => {
+            (EngineCommand::EngineCommand(ContextCommand::Theorem(..)), Some((_, p))) => {
                 Err(Error::CommandError(format!("Already proving {}", p.goal)))
             }
             /*(InterpreterCommand::EngineCommand(EngineCommand::Theorem(..)), None) if s.is_empty() => {
                 return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }*/
-            (InterpreterCommand::EngineCommand(EngineCommand::Theorem(name, form)), None) => {
+            (EngineCommand::EngineCommand(ContextCommand::Theorem(name, form)), None) => {
                 if self.context.contains_key(name) {
                     return Err(Error::AlreadyExists(name.clone()))
                 }
@@ -120,11 +120,11 @@ impl Interpreter {
 
                 self.current_proof = Some((name.clone(), Box::new(proof)));
                 self.command_stack.push(command);
-                Ok(InterpreterEffect::EnteredProofMode)
+                Ok(EngineEffect::EnteredProofMode)
             }
 
 
-            (InterpreterCommand::EngineCommand(EngineCommand::Use(s)), Some((_, ref mut p))) => {
+            (EngineCommand::EngineCommand(ContextCommand::Use(s)), Some((_, ref mut p))) => {
                 if p.is_finished() {
                     return Err(Error::CommandError("Proof is finished".to_string()))
                 }
@@ -133,17 +133,17 @@ impl Interpreter {
                     None => return Err(Error::CommandError(format!("Unknown theorem {s}"))),
                     Some(thm) => {
                         p.add_antecedent(thm.clone())?;
-                        Ok(InterpreterEffect::Nothing)
+                        Ok(EngineEffect::Nothing)
                     }
                 }
             }
 
             // Rule application to a proof
-            (InterpreterCommand::RuleCommand(rule), Some((_, ref mut p))) => {
+            (EngineCommand::RuleCommand(rule), Some((_, ref mut p))) => {
                 match p.apply(rule.clone().to_rule()) {
                     Ok(_) => {
                         self.command_stack.push(command);
-                        Ok(InterpreterEffect::ExitedProofMode)
+                        Ok(EngineEffect::ExitedProofMode)
                     },
                     Err(e) => Err(e)
                 }
@@ -151,10 +151,10 @@ impl Interpreter {
 
 
             // Ending a proof using Qed
-            (InterpreterCommand::EngineCommand(EngineCommand::Qed), None) => {
+            (EngineCommand::EngineCommand(ContextCommand::Qed), None) => {
                 Err(Error::CommandError("Not in proof mode".to_string()))
             }
-            (InterpreterCommand::EngineCommand(EngineCommand::Qed), proof) => {
+            (EngineCommand::EngineCommand(ContextCommand::Qed), proof) => {
                 let proof_clone = proof.clone();
 
                 match proof_clone {
@@ -164,7 +164,7 @@ impl Interpreter {
                             self.context.insert(n, Box::new(p.goal.clone()));
                             *proof = None;
                             self.command_stack.push(command);
-                            Ok(InterpreterEffect::NewTheorem(p.goal))
+                            Ok(EngineEffect::NewTheorem(p.goal))
                         }
                         else {
                             let txt = match p.remaining_goals_nb() {
@@ -179,10 +179,10 @@ impl Interpreter {
 
 
             // Ending a proof with admit
-            (InterpreterCommand::EngineCommand(EngineCommand::Admit), None) => {
+            (EngineCommand::EngineCommand(ContextCommand::Admit), None) => {
                 Err(Error::CommandError("Not in proof mode".to_string()))
             }
-            (InterpreterCommand::EngineCommand(EngineCommand::Admit), proof) => {
+            (EngineCommand::EngineCommand(ContextCommand::Admit), proof) => {
                 let proof_clone = proof.clone();
 
                 match proof_clone {
@@ -191,7 +191,7 @@ impl Interpreter {
                         self.context.insert(n, Box::new(p.goal.clone()));
                         *proof = None;
                         self.command_stack.push(command);
-                        Ok(InterpreterEffect::NewTheorem(p.goal))
+                        Ok(EngineEffect::NewTheorem(p.goal))
                     }
                 }
             }
@@ -205,7 +205,7 @@ impl Interpreter {
     }
 
 
-    pub fn get_current_stack(&self) -> Vec<InterpreterCommand> {
+    pub fn get_current_stack(&self) -> Vec<EngineCommand> {
         self.command_stack.clone()
     }
 }

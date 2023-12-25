@@ -1,7 +1,7 @@
 mod proof;
 mod tools;
 mod logic;
-mod interpreter;
+mod engine;
 mod repl;
 mod error;
 mod exec;

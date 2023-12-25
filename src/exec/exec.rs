@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 use crate::error::Error;
-use crate::interpreter::{Interpreter, InterpreterCommand, InterpreterEffect};
+use crate::engine::{Engine, EngineCommand, EngineEffect};
 
 const STEP_SEP: char = '.';
 
@@ -20,7 +20,7 @@ pub struct Executor {
     pub steps: Vec<Step>,
     current_step: usize,
 
-    interpreter: Interpreter
+    interpreter: Engine
 }
 
 impl Executor {
@@ -35,7 +35,7 @@ impl Executor {
             .file_name()
             .map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string());
 
-        Ok(Executor {filepath: path, steps, current_step: 0, interpreter: Interpreter::new(filename)})
+        Ok(Executor {filepath: path, steps, current_step: 0, interpreter: Engine::new(filename)})
     }
 
 
@@ -62,9 +62,9 @@ impl Executor {
     }
 
     fn exec_one(&mut self, step: &Step) -> Result<(), Error> {
-        let cmd = InterpreterCommand::from(&step.command_txt)?;
+        let cmd = EngineCommand::from(&step.command_txt)?;
         match self.interpreter.execute(cmd)? {
-            InterpreterEffect::NewTheorem(f) => println!("Added `{f}` to context"),
+            EngineEffect::NewTheorem(f) => println!("Added `{f}` to context"),
             _ => ()
         };
 

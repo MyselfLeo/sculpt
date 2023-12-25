@@ -29,9 +29,9 @@ static COMMANDS: [&str; 19] = [
 ];
 
 
-/// Control command for the interpreter. Those rules are not directly linked to natural deduction.
+/// Control command for the engine. Those rules are not directly linked to natural deduction.
 #[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
-pub enum EngineCommand {
+pub enum ContextCommand {
 
     #[cmd(name="Thm", usage="<thm_name> :: <F>", desc="Create a new theorem and start the proof mode")]
     Theorem(String, String),
@@ -43,12 +43,12 @@ pub enum EngineCommand {
     Qed
 }
 
-impl Display for EngineCommand {
+impl Display for ContextCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             //InterpreterCommand::Context(s) => write!(f, "context {s}"),
-            EngineCommand::Theorem(name, formula) => write!(f, "Thm {name} :: {formula}"),
-            EngineCommand::Admit => write!(f, "admit"),
+            ContextCommand::Theorem(name, formula) => write!(f, "Thm {name} :: {formula}"),
+            ContextCommand::Admit => write!(f, "admit"),
             e => match e.name() {
                 Some(n) => write!(f, "{n}"),
                 None => Ok(())
@@ -193,25 +193,25 @@ impl RuleCommandType {
 
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum InterpreterCommand {
-    EngineCommand(EngineCommand),
+pub enum EngineCommand {
+    EngineCommand(ContextCommand),
     RuleCommand(RuleCommand)
 }
 
-impl Display for InterpreterCommand {
+impl Display for EngineCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            InterpreterCommand::EngineCommand(c) => c.fmt(f),
-            InterpreterCommand::RuleCommand(c) => c.fmt(f),
+            EngineCommand::EngineCommand(c) => c.fmt(f),
+            EngineCommand::RuleCommand(c) => c.fmt(f),
         }
     }
 }
 
 
-impl InterpreterCommand {
+impl EngineCommand {
     /// Creates a command from a string. Typically, this string will either be a line from a file,
     /// or the command read by a REPL.
-    pub fn from(command_str: &str) -> Result<InterpreterCommand, Error> {
+    pub fn from(command_str: &str) -> Result<EngineCommand, Error> {
         let command_str = command_str.trim();
         if command_str.is_empty() {return Err(Error::EmptyCommand)}
 
@@ -274,20 +274,20 @@ impl InterpreterCommand {
 
     pub fn name(&self) -> Option<String> {
         match self {
-            InterpreterCommand::EngineCommand(c) => c.name(),
-            InterpreterCommand::RuleCommand(c) => c.name(),
+            EngineCommand::EngineCommand(c) => c.name(),
+            EngineCommand::RuleCommand(c) => c.name(),
         }
     }
     pub fn desc(&self) -> Option<String> {
         match self {
-            InterpreterCommand::EngineCommand(c) => c.desc(),
-            InterpreterCommand::RuleCommand(c) => c.desc(),
+            EngineCommand::EngineCommand(c) => c.desc(),
+            EngineCommand::RuleCommand(c) => c.desc(),
         }
     }
     pub fn usage(&self) -> Option<String> {
         match self {
-            InterpreterCommand::EngineCommand(c) => c.usage(),
-            InterpreterCommand::RuleCommand(c) => c.usage(),
+            EngineCommand::EngineCommand(c) => c.usage(),
+            EngineCommand::RuleCommand(c) => c.usage(),
         }
     }
 }

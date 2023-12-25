@@ -6,7 +6,7 @@ use crossterm::{execute, terminal};
 use strum::IntoEnumIterator;
 use unicode_segmentation::UnicodeSegmentation;
 use crate::error::Error;
-use crate::interpreter::{Interpreter, EngineCommand, RuleCommand, InterpreterCommand};
+use crate::engine::{Engine, ContextCommand, RuleCommand, EngineCommand};
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
 use crate::tools::{self, ColumnJustification};
 
@@ -28,7 +28,7 @@ macro_rules! titleline {
 #[derive(Clone)]
 pub enum ReplState {
     Idle,
-    Working(Box<Interpreter>, Box<ReplState>),
+    Working(Box<Engine>, Box<ReplState>),
     Help(Box<ReplState>),
     CommandHelp(Command, Box<ReplState>),
     CommandStack(Box<ReplState>),
@@ -174,11 +174,11 @@ impl Repl {
                 for repl_command in ReplCommand::iter() {
                     cmds.push(Command::ReplCommand(repl_command));
                 }
-                for engine_command in EngineCommand::iter() {
-                    cmds.push(Command::InterpreterCommand(InterpreterCommand::EngineCommand(engine_command)));
+                for engine_command in ContextCommand::iter() {
+                    cmds.push(Command::InterpreterCommand(EngineCommand::EngineCommand(engine_command)));
                 }
                 for rule_command in RuleCommand::iter() {
-                    cmds.push(Command::InterpreterCommand(InterpreterCommand::RuleCommand(rule_command)))
+                    cmds.push(Command::InterpreterCommand(EngineCommand::RuleCommand(rule_command)))
                 }
 
                 let strings = cmds.iter()
@@ -283,8 +283,8 @@ impl Repl {
                 let cmd_strs = p.get_current_stack().iter()
                     .map(|e| {
                         match e {
-                            InterpreterCommand::EngineCommand(ec) => ec.to_string(),
-                            InterpreterCommand::RuleCommand(rc) => format!("  {rc}"),
+                            EngineCommand::EngineCommand(ec) => ec.to_string(),
+                            EngineCommand::RuleCommand(rc) => format!("  {rc}"),
                         }
                     })
                     .collect::<Vec<String>>();
@@ -357,7 +357,7 @@ impl Repl {
                 match (state, c) {
                     // Start context
                     (ReplState::Idle, ReplCommand::Context(s)) => {
-                        let ctx = Interpreter::new(s);
+                        let ctx = Engine::new(s);
                         self.state = ReplState::Working(Box::new(ctx), Box::new(ReplState::Idle));
                     }
 

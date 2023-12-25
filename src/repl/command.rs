@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use sculpt_macro::EnumDoc;
 use strum::EnumIter;
-use crate::interpreter::InterpreterCommand;
+use crate::engine::EngineCommand;
 use crate::error::Error;
 
 static COMMANDS: [&str; 6] = [
@@ -49,7 +49,7 @@ impl Display for ReplCommand {
 
 #[derive(PartialEq, Clone)]
 pub enum Command {
-    InterpreterCommand(InterpreterCommand),
+    InterpreterCommand(EngineCommand),
     ReplCommand(ReplCommand)
 }
 
@@ -74,7 +74,7 @@ impl Command {
     }
     pub fn schema(&self) -> Option<(Vec<String>, String)> {
         match self {
-            Command::InterpreterCommand(InterpreterCommand::RuleCommand(r)) => r.schema(),
+            Command::InterpreterCommand(EngineCommand::RuleCommand(r)) => r.schema(),
             _ => None
         }
     }
@@ -121,7 +121,7 @@ impl Command {
                     return Err(Error::InvalidCommand(e.to_string()))
                 }
 
-                match InterpreterCommand::from(command_str) {
+                match EngineCommand::from(command_str) {
                     Ok(cmd) => Command::InterpreterCommand(cmd),
                     Err(e) => {
                         return Err(e)
