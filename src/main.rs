@@ -43,17 +43,25 @@ fn main() {
     const FILE: &str = "examples/test.sculpt";
 
     let txt = fs::read_to_string(FILE).unwrap();
+    let commands = txt.split('.').collect::<Vec<_>>();
 
     let mut context = Context::new();
     context.relations.insert("A".to_string(), 0);
     context.relations.insert("J".to_string(), 0);
     context.relations.insert("Z".to_string(), 0);
-    let res = Lexer::from(txt.as_ref(), Context::new());
+
+
+
 
     //println!("{}", ','.is_whitespace())
 
-    for t in res {
-        println!("{:?}", t.unwrap())
+    for c in commands {
+        let res = Lexer::from(c, Context::new());
+
+        println!("COMMAND '{}':", c.trim());
+        for tok in res {
+            println!("\t{:?}", tok.unwrap().1)
+        }
     }
 
 

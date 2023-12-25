@@ -1,4 +1,4 @@
-Def A, J, Z .. :: Prop.
+Def A, J, Z :: Prop.
 // Def t :: Term.
 
 Thm a_and_j ::  A /\ J => Z.  Admit.
