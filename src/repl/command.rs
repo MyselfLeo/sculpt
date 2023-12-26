@@ -3,6 +3,7 @@ use sculpt_macro::EnumDoc;
 use strum::EnumIter;
 use crate::engine::EngineCommand;
 use crate::error::Error;
+use crate::syntax::lexer::{Context, Lexer};
 
 static COMMANDS: [&str; 6] = [
     "context",
@@ -49,45 +50,45 @@ impl Display for ReplCommand {
 
 #[derive(PartialEq, Clone)]
 pub enum Command {
-    InterpreterCommand(EngineCommand),
+    EngineCommand(EngineCommand),
     ReplCommand(ReplCommand)
 }
 
 impl Command {
     pub fn name(&self) -> Option<String> {
         match self {
-            Command::InterpreterCommand(c) => c.name(),
+            Command::EngineCommand(c) => c.name(),
             Command::ReplCommand(c) => c.name()
         }
     }
     pub fn desc(&self) -> Option<String> {
         match self {
-            Command::InterpreterCommand(c) => c.desc(),
+            Command::EngineCommand(c) => c.desc(),
             Command::ReplCommand(c) => c.desc()
         }
     }
     pub fn usage(&self) -> Option<String> {
         match self {
-            Command::InterpreterCommand(c) => c.usage(),
+            Command::EngineCommand(c) => c.usage(),
             Command::ReplCommand(c) => c.usage()
         }
     }
     pub fn schema(&self) -> Option<(Vec<String>, String)> {
         match self {
-            Command::InterpreterCommand(EngineCommand::RuleCommand(r)) => r.schema(),
+            Command::EngineCommand(EngineCommand::RuleCommand(r)) => r.schema(),
             _ => None
         }
     }
 
 
-    pub fn from(command_str: &str) -> Result<Command, Error> {
+    pub fn from(command_str: &str, context: &Context) -> Result<Command, Error> {
         let command_str = command_str.trim();
         if command_str.is_empty() {return Ok(Command::ReplCommand(ReplCommand::Return))}
 
-        // a command is made up of a command name and command arguments.
+
+        // Try to parse REPL-specific commands. If it fails, try to parse an engine command otherwise.
         let (cname, cparam) = command_str.split_once(' ').unwrap_or_else(|| (command_str, ""));
         let cparam = cparam.to_string();
-
         let command = match (cname, cparam) {
             ("context", s) if !s.is_empty() => Command::ReplCommand(ReplCommand::Context(s)),
             ("context", s) if s.is_empty() => {
@@ -116,17 +117,8 @@ impl Command {
                 return Err(Error::TooMuchArguments(cname.to_string()))
             }
 
-            (e, _) => {
-                if COMMANDS.contains(&e) {
-                    return Err(Error::InvalidCommand(e.to_string()))
-                }
-
-                match EngineCommand::from(command_str) {
-                    Ok(cmd) => Command::InterpreterCommand(cmd),
-                    Err(e) => {
-                        return Err(e)
-                    }
-                }
+            _ => {
+                Command::EngineCommand(EngineCommand::parse(&mut Lexer::from(command_str, context.clone()))?)
             }
         };
 
@@ -138,7 +130,7 @@ impl Command {
 impl Display for Command {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Command::InterpreterCommand(c) => c.fmt(f),
+            Command::EngineCommand(c) => c.fmt(f),
             Command::ReplCommand(c) => c.fmt(f)
         }
     }

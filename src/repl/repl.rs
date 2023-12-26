@@ -8,6 +8,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::error::Error;
 use crate::engine::{Engine, ContextCommand, RuleCommand, EngineCommand};
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
+use crate::syntax::lexer::Context;
 use crate::tools::{self, ColumnJustification};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -83,7 +84,7 @@ impl Repl {
             ReplState::Working(inter, _) => {
                 res.extend(inter.get_valid_commands()
                    .iter()
-                   .map(|cmd| Command::InterpreterCommand(cmd.clone()))
+                   .map(|cmd| Command::EngineCommand(cmd.clone()))
                    .collect::<Vec<_>>()
                 );
                 res.push(Command::ReplCommand(ReplCommand::Undo));
@@ -117,7 +118,12 @@ impl Repl {
             Err(_) => return Err(Error::UnableToRead)
         };
 
-        Command::from(&txt)
+        let ctx = match &self.state {
+            ReplState::Working(e, _) => e.namespace.clone(),
+            _ => Context::new()
+        };
+
+        Command::from(&txt, &ctx)
     }
 
 
@@ -175,10 +181,10 @@ impl Repl {
                     cmds.push(Command::ReplCommand(repl_command));
                 }
                 for engine_command in ContextCommand::iter() {
-                    cmds.push(Command::InterpreterCommand(EngineCommand::EngineCommand(engine_command)));
+                    cmds.push(Command::EngineCommand(EngineCommand::ContextCommand(engine_command)));
                 }
                 for rule_command in RuleCommand::iter() {
-                    cmds.push(Command::InterpreterCommand(EngineCommand::RuleCommand(rule_command)))
+                    cmds.push(Command::EngineCommand(EngineCommand::RuleCommand(rule_command)))
                 }
 
                 let strings = cmds.iter()
@@ -283,7 +289,7 @@ impl Repl {
                 let cmd_strs = p.get_current_stack().iter()
                     .map(|e| {
                         match e {
-                            EngineCommand::EngineCommand(ec) => ec.to_string(),
+                            EngineCommand::ContextCommand(ec) => ec.to_string(),
                             EngineCommand::RuleCommand(rc) => format!("  {rc}"),
                         }
                     })
@@ -379,7 +385,7 @@ impl Repl {
                         self.state = ReplState::Help(previous(s));
                     },
                     (s, ReplCommand::HelpCommand(cmd)) => {
-                        let command = Command::from(&cmd)?;
+                        let command = Command::from(&cmd, &Context::new())?;
 
                         // if the previous state is also Help or CommandHelp, we use this state's
                         // previous instead of itself to prevent huge help-screen history
@@ -411,7 +417,7 @@ impl Repl {
 
 
             // Other commands (that could be found in a file for example)
-            (ReplState::Working(ref mut inter, ref mut prev), Command::InterpreterCommand(cmd)) => {
+            (ReplState::Working(ref mut inter, ref mut prev), Command::EngineCommand(cmd)) => {
                 inter.execute(cmd)?;
                 *prev = Box::new(curr_clone);
             },

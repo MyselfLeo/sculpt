@@ -34,20 +34,20 @@ pub enum Rule {
     Axiom,
     Intro,
     Intros,
-    Trans(String),
+    Trans(Box<Formula>),
     SplitAnd,
-    And(Side, String),
+    And(Side, Box<Formula>),
     Keep(Side),
-    FromOr(String),
+    FromOr(Box<Formula>),
 
-    Generalize(String),
-    FixAs(String),
-    Consider(String),
+    Generalize(Box<Term>),
+    FixAs(Box<Term>),
+    Consider(Box<Formula>),
     RenameAs(String),
 
 
     FromBottom,
-    ExFalso(String)
+    ExFalso(Box<Formula>)
 }
 
 impl Display for Rule {
@@ -68,7 +68,7 @@ impl Display for Rule {
             Rule::RenameAs(s) => write!(f, "Rename {s}"),
 
             Rule::FromBottom => write!(f, "FromBottom"),
-            Rule::ExFalso(_) => write!(f, "ExFalso")
+            Rule::ExFalso(s) => write!(f, "ExFalso {s}")
         }
     }
 }
@@ -154,16 +154,16 @@ impl Rule {
 
 
             Rule::Trans(prop) => {
-                let introduced_prop = match Formula::from_str(prop) {
+                /*let introduced_prop = match Formula::from_str(prop) {
                     Ok(f) => f,
                     Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula")))
-                };
+                };*/
 
-                let implication = Formula::Implies(introduced_prop.clone(), (&sequent.consequent).to_owned());
+                let implication = Formula::Implies(prop.clone(), (&sequent.consequent).to_owned());
 
                 let new_seq = vec![
                     Sequent::new(sequent.antecedents.clone(), Box::new(implication)),
-                    Sequent::new(sequent.antecedents.clone(), introduced_prop)
+                    Sequent::new(sequent.antecedents.clone(), prop.clone())
                 ];
 
                 Ok(new_seq)
@@ -175,20 +175,15 @@ impl Rule {
                 let is_axiom = sequent.antecedents.contains(&sequent.consequent);
 
                 if is_axiom { Ok(vec![]) }
-                else { Err(Error::CommandError(format!("Not an axiom"))) }
+                else { Err(Error::CommandError("Not an axiom".to_string())) }
             }
 
 
 
             Rule::And(s, prop) => {
-                let introduced_prop = match Formula::from_str(prop) {
-                    Ok(f) => f,
-                    Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula")))
-                };
-
                 let and = match s {
-                    Side::Left => Formula::And(introduced_prop, (&sequent.consequent).to_owned()),
-                    Side::Right => Formula::And((&sequent.consequent).to_owned(), introduced_prop),
+                    Side::Left => Formula::And(prop.clone(), (&sequent.consequent).to_owned()),
+                    Side::Right => Formula::And((&sequent.consequent).to_owned(), prop.clone()),
                 };
 
                 let new_seq = vec![
@@ -222,12 +217,7 @@ impl Rule {
 
 
             Rule::FromOr(or_prop) => {
-                let or = match Formula::from_str(or_prop) {
-                    Ok(f) => f,
-                    Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula in the form P \\/ Q")))
-                };
-
-                let (left_prop, right_prop) = match *or.to_owned() {
+                let (left_prop, right_prop) = match or_prop.clone() {
                     Formula::Or(lhs, rhs) => (lhs.clone(), rhs.clone()),
                     _ => return Err(Error::InvalidArguments(format!("Expected a formula in the form P \\/ Q")))
                 };
@@ -238,7 +228,7 @@ impl Rule {
                 with_prop2.push(right_prop);
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), or.clone()),
+                    Sequent::new(sequent.antecedents.clone(), or_prop.clone()),
                     Sequent::new(with_prop1, sequent.consequent.clone()),
                     Sequent::new(with_prop2, sequent.consequent.clone()),
                 ];
@@ -249,8 +239,7 @@ impl Rule {
 
 
 
-            Rule::Generalize(s) => {
-                let term: Box<Term> = parser::TermParser::new().parse(s).map_err(|_| Error::InvalidArguments(format!("Expected <Term> as <var>")))?;
+            Rule::Generalize(term) => {
                 // the term must be present in the formula for it to be generalized
                 if !sequent.consequent.exists(&term) {return Err(Error::CommandError(format!("{term} not present in the goal")))}
 
@@ -269,11 +258,10 @@ impl Rule {
             }
 
 
-            Rule::FixAs(t) => {
+            Rule::FixAs(term) => {
                 match sequent.consequent.as_ref() {
 
                     Formula::Exists(exists, formula) => {
-                        let term: Box<Term> = parser::TermParser::new().parse(t).map_err(|_| Error::InvalidArguments(format!("Expected <Term>")))?;
                         if sequent.consequent.exists(&term) {return Err(Error::InvalidArguments(format!("{term} already exists")))}
 
                         let mut fixed = formula.clone();
@@ -372,12 +360,10 @@ impl Rule {
                 // ExFalso only works if current consequent is Bottom (i.e false)
                 match sequent.consequent.as_ref() {
                     Formula::Falsum => {
-                        let prop = parser::FormulaParser::new().parse(prop).map_err(|_| Error::InvalidArguments(format!("Expected <F>")))?;
-
                         let (true_prop, false_prop) = {
-                            match *prop {
+                            match prop {
                                 Formula::Not(ref ff) => (ff.clone(), prop.clone()),
-                                o => (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
+                                o => (Box::new(o.clone()), Box::new(Formula::Not(Box::new(**o))))
                             }
                         };
         

@@ -97,8 +97,37 @@ pub enum Token {
     DoubleColon         // ::
 }
 
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Token::Def => "Def",
+            Token::Thm => "Thm",
+            Token::Admit => "Admit",
+            Token::Qed => "Qed",
+            Token::Use => "Use",
+            Token::RuleName(s) => s,
+            Token::Term(s) => s,
+            Token::Relation(s) => s,
+            Token::Ident(s) => s,
+            Token::Falsum => "falsum",
+            Token::Exists => "exists",
+            Token::Forall => "forall",
+            Token::Wave => "~",
+            Token::DoubleArrow => "=>",
+            Token::Or => "\\/",
+            Token::And => "/\\",
+            Token::OpenParen => "(",
+            Token::CloseParen => ")",
+            Token::Comma => ",",
+            Token::Dot => ".",
+            Token::DoubleColon => "::",
+        };
+        write!(f, "{str}")
+    }
+}
 
 
+#[derive(Clone)]
 pub struct Context {
     pub terms: HashMap<String, usize>,
     pub relations: HashMap<String, usize>

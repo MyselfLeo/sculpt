@@ -5,6 +5,7 @@ use crate::engine::command::{RuleCommandType, RuleCommandTypeDefault};
 use super::{EngineCommand, ContextCommand};
 use crate::logic::Formula;
 use crate::proof::Proof;
+use crate::syntax::lexer::Context;
 
 /// Effect that a command had on the engine status.
 /// Returned by Engine::execute
@@ -22,6 +23,7 @@ pub enum EngineEffect {
 #[derive(Clone, Debug)]
 pub struct Engine {
     pub name: String,
+    pub namespace: Context,
     pub context: HashMap<String, Box<Formula>>,
     pub current_proof: Option<(String, Box<Proof>)>,
     command_stack: Vec<EngineCommand>
@@ -29,7 +31,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(name: String) -> Engine {
-        Engine { name, context: HashMap::new(), current_proof: None, command_stack: vec![] }
+        Engine { name, namespace: Context::new(), context: HashMap::new(), current_proof: None, command_stack: vec![] }
     }
 
 
@@ -48,13 +50,13 @@ impl Engine {
     pub fn get_valid_commands(&self) -> Vec<EngineCommand> {
         match &self.current_proof {
             None => vec![
-                EngineCommand::EngineCommand(ContextCommand::Theorem("".to_string(), "".to_string())),
+                EngineCommand::ContextCommand(ContextCommand::Theorem("".to_string(), "".to_string())),
             ],
             Some((_, p)) => {
                 match p.get_applicable_rules() {
                     None => vec![
-                        EngineCommand::EngineCommand(ContextCommand::Qed),
-                        EngineCommand::EngineCommand(ContextCommand::Admit),
+                        EngineCommand::ContextCommand(ContextCommand::Qed),
+                        EngineCommand::ContextCommand(ContextCommand::Admit),
                     ],
                     Some(ruletype) => {
                         ruletype
@@ -100,13 +102,10 @@ impl Engine {
 
 
             // Start of a proof
-            (EngineCommand::EngineCommand(ContextCommand::Theorem(..)), Some((_, p))) => {
+            (EngineCommand::ContextCommand(ContextCommand::Theorem(..)), Some((_, p))) => {
                 Err(Error::CommandError(format!("Already proving {}", p.goal)))
             }
-            /*(InterpreterCommand::EngineCommand(EngineCommand::Theorem(..)), None) if s.is_empty() => {
-                return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
-            }*/
-            (EngineCommand::EngineCommand(ContextCommand::Theorem(name, form)), None) => {
+            (EngineCommand::ContextCommand(ContextCommand::Theorem(name, form)), None) => {
                 if self.context.contains_key(name) {
                     return Err(Error::AlreadyExists(name.clone()))
                 }
@@ -124,7 +123,7 @@ impl Engine {
             }
 
 
-            (EngineCommand::EngineCommand(ContextCommand::Use(s)), Some((_, ref mut p))) => {
+            (EngineCommand::ContextCommand(ContextCommand::Use(s)), Some((_, ref mut p))) => {
                 if p.is_finished() {
                     return Err(Error::CommandError("Proof is finished".to_string()))
                 }
@@ -151,10 +150,10 @@ impl Engine {
 
 
             // Ending a proof using Qed
-            (EngineCommand::EngineCommand(ContextCommand::Qed), None) => {
+            (EngineCommand::ContextCommand(ContextCommand::Qed), None) => {
                 Err(Error::CommandError("Not in proof mode".to_string()))
             }
-            (EngineCommand::EngineCommand(ContextCommand::Qed), proof) => {
+            (EngineCommand::ContextCommand(ContextCommand::Qed), proof) => {
                 let proof_clone = proof.clone();
 
                 match proof_clone {
@@ -179,10 +178,10 @@ impl Engine {
 
 
             // Ending a proof with admit
-            (EngineCommand::EngineCommand(ContextCommand::Admit), None) => {
+            (EngineCommand::ContextCommand(ContextCommand::Admit), None) => {
                 Err(Error::CommandError("Not in proof mode".to_string()))
             }
-            (EngineCommand::EngineCommand(ContextCommand::Admit), proof) => {
+            (EngineCommand::ContextCommand(ContextCommand::Admit), proof) => {
                 let proof_clone = proof.clone();
 
                 match proof_clone {

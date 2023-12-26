@@ -1,9 +1,11 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
+use lalrpop_util::ParseError;
 use strum::EnumIter;
 use sculpt_macro::{EnumDoc, EnumType};
 use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
-use crate::logic::Formula;
-use crate::syntax::lexer::Lexer;
+use crate::logic::{Formula, Term};
+use crate::syntax::lexer::{Lexer, LexicalError, Spanned, Token};
+use crate::syntax::parser;
 
 
 static COMMANDS: [&str; 19] = [
@@ -70,31 +72,31 @@ pub enum RuleCommand {
     #[cmd(name="intros", desc="Apply multiple 'intro' rules, until it's not longer possible")]
     Intros,
     #[cmd(name="trans", usage="<F>")]
-    Trans(String),
+    Trans(Box<Formula>),
     #[cmd(name="split")]
     Split,
     #[cmd(name="and_left", usage="<F>")]
-    AndLeft(String),
+    AndLeft(Box<Formula>),
     #[cmd(name="and_right", usage="<F>")]
-    AndRight(String),
+    AndRight(Box<Formula>),
     #[cmd(name="keep_left")]
     KeepLeft,
     #[cmd(name="keep_right")]
     KeepRight,
     #[cmd(name="from_or", usage="<F> \\/ <G>")]
-    FromOr(String),
+    FromOr(Box<Formula>),
     #[cmd(name="gen", usage="<T>")]
-    Generalize(String),
+    Generalize(Box<Term>),
     #[cmd(name="fix_as", usage="<T>")]
-    FixAs(String),
+    FixAs(Box<Term>),
     #[cmd(name="consider", usage="exists <v>, <F>")]
-    Consider(String),
+    Consider(Box<Formula>),
     #[cmd(name="rename_as", usage="<v>")]
     RenameAs(String),
     #[cmd(name="from_bottom", usage="<F>")]
     FromBottom,
-    #[cmd(name="exfalso")]
-    ExFalso(String)
+    #[cmd(name="exfalso", usage="<F>")]
+    ExFalso(Box<Formula>)
 }
 
 
@@ -195,14 +197,14 @@ impl RuleCommandType {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum EngineCommand {
-    EngineCommand(ContextCommand),
+    ContextCommand(ContextCommand),
     RuleCommand(RuleCommand)
 }
 
 impl Display for EngineCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            EngineCommand::EngineCommand(c) => c.fmt(f),
+            EngineCommand::ContextCommand(c) => c.fmt(f),
             EngineCommand::RuleCommand(c) => c.fmt(f),
         }
     }
@@ -210,16 +212,102 @@ impl Display for EngineCommand {
 
 
 impl EngineCommand {
-    /// Creates a command from a string. Typically, this string will either be a line from a file,
-    /// or the command read by a REPL.
-
-
 
     pub fn parse(command: &mut Lexer) -> Result<EngineCommand, Error> {
+        let res = match command.next().unwrap_or_else(Err(Error::UnexpectedEOF))? {
+            (_, Token::Thm, _) => EngineCommand::parse_thm(command),
+            (_, Token::Def, _) => EngineCommand::parse_def(command),
+            (_, Token::Use, _) => EngineCommand::parse_use(command),
+            (_, Token::Qed, _) => EngineCommand::parse_qed(command),
+            (_, Token::Admit, _) => EngineCommand::parse_admit(command),
+            (_, Token::RuleName(s), _) => EngineCommand::parse_rule(command, s),
+            (_, t, _) => Err(Error::NotACommand(t.to_string()))
+        }?;
+
+        // The tokens should be fully consumed after parsing a command. Otherwise, this is a
+        // syntactical error
+        if command.next().is_some() {
+            Err(Error::TooMuchArguments("Too much arguments where supplied".to_string()))
+        }
+        else {
+            Ok(res)
+        }
+    }
+
+
+    fn parse_thm(lxr: &mut Lexer) -> Result<EngineCommand, Error> {
         todo!()
     }
 
 
+    fn parse_def(lxr: &mut Lexer) -> Result<EngineCommand, Error> {
+        todo!()
+    }
+
+
+    fn parse_use(lxr: &mut Lexer) -> Result<EngineCommand, Error> {
+        match lxr.next() {
+            None => Err(Error::ArgumentsRequired("Expected a theorem name".to_string())),
+            Some(r) => match r? {
+                (_, Token::Ident(s), _) => Ok(EngineCommand::ContextCommand(ContextCommand::Use(s))),
+                (_, t, _) => Err(Error::InvalidArguments("Expected a theorem name".to_string()))
+            }
+        }
+    }
+
+
+    fn parse_qed(_: &mut Lexer) -> Result<EngineCommand, Error> {
+        Ok(EngineCommand::ContextCommand(ContextCommand::Qed))
+    }
+
+    fn parse_admit(_: &mut Lexer) -> Result<EngineCommand, Error> {
+        Ok(EngineCommand::ContextCommand(ContextCommand::Admit))
+    }
+
+    fn parse_rule(lxr: &mut Lexer, rule_name: String) -> Result<EngineCommand, Error> {
+        let parse_formula = |lxr: &mut Lexer| -> Result<Box<Formula>, Error> {
+            match parser::FormulaParser::new().parse(lxr) {
+                Ok(f) => Ok(f),
+                Err(e) => Err(Error::InvalidArguments(format!("Invalid formula: {:?}", e)))
+            }
+        };
+        let parse_term = |lxr: &mut Lexer| -> Result<Box<Term>, Error> {
+            match parser::TermParser::new().parse(lxr) {
+                Ok(t) => Ok(t),
+                Err(e) => Err(Error::InvalidArguments(format!("Invalid term: {:?}", e)))
+            }
+        };
+
+        let rc = match rule_name.as_str() {
+            "axiom" => RuleCommand::Axiom,
+            "intro" => RuleCommand::Intro,
+            "intros" => RuleCommand::Intros,
+            "trans" => RuleCommand::Trans(parse_formula(lxr)?),
+            "split" => RuleCommand::Split,
+            "and_left" => RuleCommand::AndLeft(parse_formula(lxr)?),
+            "and_right" => RuleCommand::AndRight(parse_formula(lxr)?),
+            "keep_left" => RuleCommand::KeepLeft,
+            "keep_right" => RuleCommand::KeepRight,
+            "from_or" => RuleCommand::FromOr(parse_formula(lxr)?),
+            "gen" => RuleCommand::Generalize(parse_term(lxr)?),
+            "fix_as" => RuleCommand::Generalize(parse_term(lxr)?),
+            "consider" => RuleCommand::Consider(parse_formula(lxr)?),
+            "rename_as" => {
+                match lxr.next() {
+                    Some(r) => match r {
+                        Ok((_, Token::Ident(s), _)) => RuleCommand::RenameAs(s),
+                        _ => return Err(Error::InvalidArguments("Expected a variable name".to_string()))
+                    },
+                    None => return Err(Error::ArgumentsRequired("Expected a variable name".to_string()))
+                }
+            },
+            "from_bottom" => RuleCommand::FromBottom,
+            "exfalso" => RuleCommand::ExFalso(parse_formula(lxr)?),
+            _ => unreachable!(), // lexer should not generate a Token::RuleName if rule_name is not in this list
+        };
+
+        Ok(EngineCommand::RuleCommand(rc))
+    }
 
 
     /*pub fn from(command_str: &str) -> Result<EngineCommand, Error> {
@@ -285,19 +373,19 @@ impl EngineCommand {
 
     pub fn name(&self) -> Option<String> {
         match self {
-            EngineCommand::EngineCommand(c) => c.name(),
+            EngineCommand::ContextCommand(c) => c.name(),
             EngineCommand::RuleCommand(c) => c.name(),
         }
     }
     pub fn desc(&self) -> Option<String> {
         match self {
-            EngineCommand::EngineCommand(c) => c.desc(),
+            EngineCommand::ContextCommand(c) => c.desc(),
             EngineCommand::RuleCommand(c) => c.desc(),
         }
     }
     pub fn usage(&self) -> Option<String> {
         match self {
-            EngineCommand::EngineCommand(c) => c.usage(),
+            EngineCommand::ContextCommand(c) => c.usage(),
             EngineCommand::RuleCommand(c) => c.usage(),
         }
     }
