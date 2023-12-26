@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use crate::{syntax::parser, tools};
 use crate::logic::term::Term;
+use crate::syntax::lexer::Lexer;
 
 /// First-order logic formula
 #[derive(Debug, Clone, PartialEq)]
@@ -16,11 +17,9 @@ pub enum Formula {
 }
 
 impl Formula {
-    /// Creates a new formula by parsing a string.
-    /// Note that identifiers starting with a lowercase letter will be considered terms,
-    /// and those starting with an uppercase letter will be considered relations.
-    pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
-        parser::FormulaParser::new().parse(str).map_err(|_| "Invalid formula".to_string())
+    /// Creates a new formula by parsing the given tokens.
+    pub fn parse(lxr: &mut Lexer) -> Result<Box<Formula>, String> {
+        parser::FormulaParser::new().parse(lxr).map_err(|_| "Invalid formula".to_string())
     }
 
     /// Return the precedence of the formula based on its type.
@@ -222,5 +221,12 @@ impl Display for Formula {
             Formula::Forall(v, p) => write!(f, "forall {v}, {p}"),
             Formula::Exists(v, p) => write!(f, "exists {v}, {p}")
         }
+    }
+}
+
+
+impl Default for Formula {
+    fn default() -> Self {
+        Formula::Falsum
     }
 }

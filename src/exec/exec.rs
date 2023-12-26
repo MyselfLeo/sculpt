@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use crate::error::Error;
 use crate::engine::{Engine, EngineCommand, EngineEffect};
+use crate::syntax::lexer::Lexer;
 
 const STEP_SEP: char = '.';
 
@@ -62,7 +63,8 @@ impl Executor {
     }
 
     fn exec_one(&mut self, step: &Step) -> Result<(), Error> {
-        let cmd = EngineCommand::from(&step.command_txt)?;
+        let mut lexer = Lexer::from(step.command_txt.as_str(), self.interpreter.namespace.clone());
+        let cmd = EngineCommand::parse(&mut lexer)?;
         match self.interpreter.execute(cmd)? {
             EngineEffect::NewTheorem(f) => println!("Added `{f}` to context"),
             _ => ()

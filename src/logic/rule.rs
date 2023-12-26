@@ -217,9 +217,9 @@ impl Rule {
 
 
             Rule::FromOr(or_prop) => {
-                let (left_prop, right_prop) = match or_prop.clone() {
+                let (left_prop, right_prop) = match *or_prop.clone() {
                     Formula::Or(lhs, rhs) => (lhs.clone(), rhs.clone()),
-                    _ => return Err(Error::InvalidArguments(format!("Expected a formula in the form P \\/ Q")))
+                    _ => return Err(Error::InvalidArguments("Expected a formula in the form P \\/ Q".to_string()))
                 };
 
                 let mut with_prop1 = sequent.antecedents.clone();
@@ -280,9 +280,7 @@ impl Rule {
             }
 
 
-            Rule::Consider(f) => {
-                let new_form: Box<Formula> = parser::FormulaParser::new().parse(f).map_err(|_| Error::InvalidArguments(format!("Expected exists <var>, <Formula>")))?;
-
+            Rule::Consider(new_form) => {
                 match new_form.as_ref() {
                     Formula::Exists(var, nf) => {
                         if sequent.consequent.domain().contains(&var) {return Err(Error::CommandError(format!("{var} already exists in the goal")))}
@@ -309,12 +307,10 @@ impl Rule {
 
 
             Rule::RenameAs(s) => {
-                let var: String = parser::VariableParser::new().parse(s).map_err(|_| Error::InvalidArguments(format!("Expected <var>")))?;
-
                 match sequent.consequent.as_ref() {
 
                     Formula::Exists(old, f) => {
-                        let mut nf = Box::new(Formula::Exists(var, f.clone()));
+                        let mut nf = Box::new(Formula::Exists(s.clone(), f.clone()));
                         nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
                         let mut new_s = sequent.clone();
                         new_s.consequent = nf;
@@ -323,7 +319,7 @@ impl Rule {
                     }
 
                     Formula::Forall(old, f) => {
-                        let mut nf = Box::new(Formula::Forall(var, f.clone()));
+                        let mut nf = Box::new(Formula::Forall(s.clone(), f.clone()));
                         nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
                         let mut new_s = sequent.clone();
                         new_s.consequent = nf;
@@ -361,9 +357,9 @@ impl Rule {
                 match sequent.consequent.as_ref() {
                     Formula::Falsum => {
                         let (true_prop, false_prop) = {
-                            match prop {
+                            match *prop.clone() {
                                 Formula::Not(ref ff) => (ff.clone(), prop.clone()),
-                                o => (Box::new(o.clone()), Box::new(Formula::Not(Box::new(**o))))
+                                o => (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
                             }
                         };
         

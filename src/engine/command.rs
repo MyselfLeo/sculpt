@@ -204,8 +204,8 @@ pub enum EngineCommand {
 impl Display for EngineCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            EngineCommand::ContextCommand(c) => c.fmt(f),
-            EngineCommand::RuleCommand(c) => c.fmt(f),
+            EngineCommand::ContextCommand(c) => std::fmt::Display::fmt(c, f),
+            EngineCommand::RuleCommand(c) => std::fmt::Display::fmt(c, f),
         }
     }
 }
@@ -214,7 +214,12 @@ impl Display for EngineCommand {
 impl EngineCommand {
 
     pub fn parse(command: &mut Lexer) -> Result<EngineCommand, Error> {
-        let res = match command.next().unwrap_or_else(Err(Error::UnexpectedEOF))? {
+        let next = match command.next() {
+            Some(c) => c.map_err(|e| Error::UnexpectedEOF)?,
+            None => return Err(Error::UnexpectedEOF)
+        };
+
+        let res = match next {
             (_, Token::Thm, _) => EngineCommand::parse_thm(command),
             (_, Token::Def, _) => EngineCommand::parse_def(command),
             (_, Token::Use, _) => EngineCommand::parse_use(command),
@@ -248,7 +253,7 @@ impl EngineCommand {
     fn parse_use(lxr: &mut Lexer) -> Result<EngineCommand, Error> {
         match lxr.next() {
             None => Err(Error::ArgumentsRequired("Expected a theorem name".to_string())),
-            Some(r) => match r? {
+            Some(r) => match r.map_err(|_| Error::UnexpectedEOF)? {
                 (_, Token::Ident(s), _) => Ok(EngineCommand::ContextCommand(ContextCommand::Use(s))),
                 (_, t, _) => Err(Error::InvalidArguments("Expected a theorem name".to_string()))
             }

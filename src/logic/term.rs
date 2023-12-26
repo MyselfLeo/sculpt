@@ -1,5 +1,7 @@
 use std::fmt::{Display, Formatter};
 use crate::{syntax::parser, tools};
+use crate::logic::Formula;
+use crate::syntax::lexer::Lexer;
 
 /// First-order logic term, that is either a variable or a function.
 /// Functions with no arguments are constants.
@@ -28,11 +30,9 @@ impl Display for Term {
 
 
 impl Term {
-    /// Creates a new Term by parsing the given string.
-    /// Each identifier (variable or function) MUST start with a lowercase letter.
-    /// Note that only identifier that matches the regex r"[a-z]'*" will be considered a variable.
-    pub fn from_str(str: &str) -> Result<Box<Term>, String> {
-        parser::TermParser::new().parse(str).map_err(|_| "Invalid term".to_string())
+    /// Creates a new Term by parsing the given tokens.
+    pub fn from_str(lxr: &mut Lexer) -> Result<Box<Term>, String> {
+        parser::TermParser::new().parse(lxr).map_err(|_| "Invalid term".to_string())
     }
 
     /// Return whether the given term is used somewhere in this term or not.
@@ -82,5 +82,13 @@ impl Term {
                     .collect()
             }
         }
+    }
+}
+
+
+
+impl Default for Term {
+    fn default() -> Self {
+        Term::Variable("x".to_string())
     }
 }

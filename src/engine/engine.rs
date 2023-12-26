@@ -5,7 +5,7 @@ use crate::engine::command::{RuleCommandType, RuleCommandTypeDefault};
 use super::{EngineCommand, ContextCommand};
 use crate::logic::Formula;
 use crate::proof::Proof;
-use crate::syntax::lexer::Context;
+use crate::syntax::lexer::{Context, Lexer};
 
 /// Effect that a command had on the engine status.
 /// Returned by Engine::execute
@@ -105,12 +105,12 @@ impl Engine {
             (EngineCommand::ContextCommand(ContextCommand::Theorem(..)), Some((_, p))) => {
                 Err(Error::CommandError(format!("Already proving {}", p.goal)))
             }
-            (EngineCommand::ContextCommand(ContextCommand::Theorem(name, form)), None) => {
+            (EngineCommand::ContextCommand(ContextCommand::Theorem(name, thm)), None) => {
                 if self.context.contains_key(name) {
                     return Err(Error::AlreadyExists(name.clone()))
                 }
 
-                let goal = match Formula::from_str(&form) {
+                let goal = match Formula::parse(&mut Lexer::from(thm.as_str(), self.namespace.clone())) {
                     Ok(f) => f,
                     Err(e) => return Err(Error::InvalidArguments(e))
                 };

@@ -1,5 +1,5 @@
 use crate::logic::{Term, Formula};
-use crate::interpreter::{EngineCommand, ContextCommand, RuleCommand};
+use crate::engine::{EngineCommand, ContextCommand, RuleCommand};
 use crate::syntax::lexer;
 use lalrpop_util::ParseError;
 

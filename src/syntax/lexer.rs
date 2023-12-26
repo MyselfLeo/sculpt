@@ -70,7 +70,7 @@ impl Debug for LexicalError {
 pub type Spanned<Token, Loc> = (Loc, Token, Loc);
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Def,
     Thm,
@@ -127,7 +127,7 @@ impl Display for Token {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Context {
     pub terms: HashMap<String, usize>,
     pub relations: HashMap<String, usize>
