@@ -1,8 +1,8 @@
 extern crate proc_macro;
-use proc_macro::TokenStream;
+use proc_macro::{TokenStream};
 use std::collections::HashMap;
-use quote::{format_ident, quote};
-use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, Lit, Variant};
+use quote::{format_ident, quote, TokenStreamExt};
+use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, Lit, Variant, Type, PathArguments};
 use syn::punctuated::Punctuated;
 
 
@@ -248,8 +248,38 @@ fn default_args(variant: &Variant) -> proc_macro2::TokenStream {
                 f.ty.clone()
             })
             .map(|t| {
+                if let Type::Path(tp) = t {
+                    let leading = tp.path.leading_colon;
+                    let mut segments = proc_macro2::TokenStream::new();
+                    for segment in tp.path.segments {
+                        segments.append(segment.ident);
+
+                        match segment.arguments {
+                            PathArguments::None => {}
+                            PathArguments::AngleBracketed(arg) => {
+                                segments.extend(quote! {::});
+                                segments.extend(quote! {#arg});
+                            }
+                            PathArguments::Parenthesized(arg) => {
+                                segments.extend(quote! {#arg});
+                            }
+                        }
+
+                        segments.extend(quote! {::});
+                    }
+
+                    quote! {
+                        #leading #segments
+                    }
+                } else {
+                    quote! {
+                        #t
+                    }
+                }
+            })
+            .map(|t| {
                quote! {
-                   #t::default()
+                   #t default()
                }
             })
             .collect::<Vec<_>>();
