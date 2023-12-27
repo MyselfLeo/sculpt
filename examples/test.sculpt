@@ -1,4 +1,4 @@
-Def A, J, Z :: Prop.
+// Def A, J, Z :: Prop.
 // Def t :: Term.
 
 Thm a_and_j ::  A /\ J => Z.  Admit.
@@ -11,8 +11,8 @@ Thm zoe_va_paris :: Z.
     Use a_if_j.
     Use j_or_z.
 
-    trans.
+    trans (forall x, (A(x))).
     from_or A \/ J.
     intros.
-    and_left.
+    and_left J => A => J.
 Qed.

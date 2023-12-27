@@ -179,6 +179,24 @@ impl<'input> Lexer<'input> {
     }
 
 
+    pub fn next_token(&mut self) -> Result<Option<Token>, LexicalError> {
+        match self.next() {
+            None => Ok(None),
+            Some(r) => match r {
+                Ok((_, t, _)) => Ok(Some(t)),
+                Err(r) => Err(r)
+            }
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        let mut peekable = self.iterator.clone().peekable();
+        match peekable.peek() {
+            Some(_) => false,
+            None => true
+        }
+    }
+
 
     fn consume_buf(&mut self) -> Result<Spanned<Token, usize>, LexicalError> {
         match Self::token_from_str(&self.buf, &self.buf_state, &self.context) {

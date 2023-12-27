@@ -118,7 +118,10 @@ impl Command {
             }
 
             _ => {
-                Command::EngineCommand(EngineCommand::parse(&mut Lexer::from(command_str, context.clone()))?)
+                match EngineCommand::parse(&mut Lexer::from(command_str, context.clone()))? {
+                    None => Command::ReplCommand(ReplCommand::Return), // empty command, probably a comment
+                    Some(c) => Command::EngineCommand(c)
+                }
             }
         };
 

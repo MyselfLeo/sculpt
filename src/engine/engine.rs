@@ -50,7 +50,7 @@ impl Engine {
     pub fn get_valid_commands(&self) -> Vec<EngineCommand> {
         match &self.current_proof {
             None => vec![
-                EngineCommand::ContextCommand(ContextCommand::Theorem("".to_string(), "".to_string())),
+                EngineCommand::ContextCommand(ContextCommand::Theorem("".to_string(), Box::new(Formula::default()))),
             ],
             Some((_, p)) => {
                 match p.get_applicable_rules() {
@@ -105,17 +105,12 @@ impl Engine {
             (EngineCommand::ContextCommand(ContextCommand::Theorem(..)), Some((_, p))) => {
                 Err(Error::CommandError(format!("Already proving {}", p.goal)))
             }
-            (EngineCommand::ContextCommand(ContextCommand::Theorem(name, thm)), None) => {
+            (EngineCommand::ContextCommand(ContextCommand::Theorem(name, goal)), None) => {
                 if self.context.contains_key(name) {
                     return Err(Error::AlreadyExists(name.clone()))
                 }
 
-                let goal = match Formula::parse(&mut Lexer::from(thm.as_str(), self.namespace.clone())) {
-                    Ok(f) => f,
-                    Err(e) => return Err(Error::InvalidArguments(e))
-                };
-
-                let proof = Proof::start(goal);
+                let proof = Proof::start(goal.clone());
 
                 self.current_proof = Some((name.clone(), Box::new(proof)));
                 self.command_stack.push(command);

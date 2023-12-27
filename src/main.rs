@@ -11,6 +11,7 @@ use std::fs;
 use error::Error;
 
 use repl::Repl;
+use crate::engine::EngineCommand;
 use crate::exec::Executor;
 use crate::syntax::lexer::{Context, Lexer};
 
@@ -56,11 +57,10 @@ fn main() {
     //println!("{}", ','.is_whitespace())
 
     for c in commands {
-        let res = Lexer::from(c, Context::new());
-
-        println!("COMMAND '{}':", c.trim());
-        for tok in res {
-            println!("\t{:?}", tok.unwrap().1)
+        let c= c.trim();
+        match EngineCommand::parse(&mut Lexer::from(c, context.clone())) {
+            Ok(_) => {}
+            Err(e) => println!("Error in command '{c}' : {e}")
         }
     }
 
