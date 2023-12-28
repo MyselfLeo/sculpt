@@ -3,7 +3,6 @@ use crate::logic::{Formula, Term};
 
 pub enum Error {
     CommandError(String),               // Error during command execution
-    EmptyCommand,                       // Empty command where it is not accepted
     InvalidArguments(String),           // Valid command but incorrect arguments
     InvalidFormula(Formula, String),    // Problem with a formula
     InvalidTerm(Term, String),          // Problem with a formula
@@ -12,18 +11,16 @@ pub enum Error {
     ArgumentsRequired(String),          // No arguments given but arguments expected
     UnableToRead,                       // I/O error
     UnknownCommand(String),             // Unknown command
-            EmptyFile(String),          // Empty file
+    EmptyFile(String),                  // Empty file
     UnfinishedProof,
     UnexpectedEOF,
     AlreadyExists(String),
-    NotACommand(String)
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::CommandError(e) => std::fmt::Display::fmt(e, f),
-            Error::EmptyCommand => write!(f, "empty command not permitted"),
             Error::InvalidArguments(e) => std::fmt::Display::fmt(e, f),
             Error::InvalidCommand(c) => write!(f, "Command '{c}' exists but is not valid in this context"),
             Error::InvalidFormula(form, s) => write!(f, "Invalid formula '{form}': {s}"),
@@ -36,7 +33,6 @@ impl Display for Error {
             Error::UnfinishedProof => write!(f, "Unfinished proof"),
             Error::UnexpectedEOF => write!(f, "Unexpected end-of-file. Have you forgot a '.' ?"),
             Error::AlreadyExists(sym) => write!(f, "{sym} already exists"),
-            Error::NotACommand(tok) => write!(f, "'{tok}' is not a valid command"),
         }
     }
 }

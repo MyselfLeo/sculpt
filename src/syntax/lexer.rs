@@ -196,7 +196,7 @@ impl<'input> Lexer<'input> {
                     "," => Token::Comma,
                     "." => Token::Dot,
                     "::" => Token::DoubleColon,
-                    e => return None
+                    _ => return None
                 }
             }
         };

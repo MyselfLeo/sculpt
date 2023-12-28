@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 use crate::{syntax::parser, tools};
+use crate::error::Error;
 use crate::logic::term::Term;
 use crate::syntax::lexer::Lexer;
 
@@ -7,7 +8,7 @@ use crate::syntax::lexer::Lexer;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Formula {
     Falsum,
-    Relation(String, Vec<Box<Term>>),
+    Relation(String, Vec<Term>),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
     And(Box<Formula>, Box<Formula>),
@@ -18,8 +19,8 @@ pub enum Formula {
 
 impl Formula {
     /// Creates a new formula by parsing the given tokens.
-    pub fn parse(lxr: &mut Lexer) -> Result<Box<Formula>, String> {
-        parser::FormulaParser::new().parse(lxr).map_err(|_| "Invalid formula".to_string())
+    pub fn parse(lxr: &mut Lexer) -> Result<Formula, Error> {
+        parser::FormulaParser::new().parse(lxr).map_err(|_| Error::InvalidArguments("Invalid formula".to_string()))
     }
 
     /// Return the precedence of the formula based on its type.

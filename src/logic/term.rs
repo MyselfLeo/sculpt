@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 use crate::{syntax::parser, tools};
-use crate::logic::Formula;
+use crate::error::Error;
 use crate::syntax::lexer::Lexer;
 
 /// First-order logic term, that is either a variable or a function.
@@ -8,7 +8,7 @@ use crate::syntax::lexer::Lexer;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Variable(String),
-    Function(String, Vec<Box<Term>>)
+    Function(String, Vec<Term>)
 }
 
 
@@ -30,9 +30,8 @@ impl Display for Term {
 
 
 impl Term {
-    /// Creates a new Term by parsing the given tokens.
-    pub fn from_str(lxr: &mut Lexer) -> Result<Box<Term>, String> {
-        parser::TermParser::new().parse(lxr).map_err(|_| "Invalid term".to_string())
+    pub fn parse(lxr: &mut Lexer) -> Result<Term, Error> {
+        parser::TermParser::new().parse(lxr).map_err(|_| Error::InvalidArguments("Invalid term".to_string()))
     }
 
     /// Return whether the given term is used somewhere in this term or not.

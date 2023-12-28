@@ -166,7 +166,7 @@ impl Engine {
                     }
 
                     for t in terms {
-                        effects.append(&mut self.check_term(t.as_ref(), forgiving)?)
+                        effects.append(&mut self.check_term(t, forgiving)?)
                     };
 
                     Ok(effects)
@@ -225,7 +225,7 @@ impl Engine {
                     }
 
                     for t in terms {
-                        effects.append(&mut self.check_term(t.as_ref(), forgiving)?)
+                        effects.append(&mut self.check_term(t, forgiving)?)
                     };
 
                     Ok(effects)
@@ -275,7 +275,8 @@ impl Engine {
                 self.context.expect_not_defined(name)?;
 
                 // Check that the formula is valid
-                self.check_formula(goal, true)?;
+                let mut check_eff = self.check_formula(goal, true)?;
+                effects.append(&mut check_eff);
 
                 let proof = Proof::start(goal.clone());
 

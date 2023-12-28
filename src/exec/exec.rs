@@ -19,7 +19,7 @@ pub struct Executor {
     pub filepath: String,
 
     pub steps: Vec<Step>,
-    current_step: usize,
+    //current_step: usize,
 
     interpreter: Engine
 }
@@ -36,13 +36,13 @@ impl Executor {
             .file_name()
             .map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string());
 
-        Ok(Executor {filepath: path, steps, current_step: 0, interpreter: Engine::new(filename)})
+        Ok(Executor {filepath: path, steps, /*current_step: 0,*/ interpreter: Engine::new(filename)})
     }
 
 
-    pub fn current_step(&self) -> Step {
-        self.steps[self.current_step].clone()
-    }
+    //pub fn current_step(&self) -> Step {
+    //    self.steps[self.current_step].clone()
+    //}
 
 
 
@@ -77,10 +77,10 @@ impl Executor {
 
 
 
-    fn filename(&self) -> String {
+    /*fn filename(&self) -> String {
         let path = Path::new(&self.filepath);
         path.file_name().map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string())
-    }
+    }*/
 
     fn parse_steps(content: &str) -> Result<Vec<Step>, Error> {
         let mut res = vec![];

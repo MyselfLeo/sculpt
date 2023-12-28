@@ -4,7 +4,6 @@ use sculpt_macro::{EnumDoc, EnumType};
 use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
 use crate::logic::{Formula, Term};
 use crate::syntax::lexer::{Lexer, Token};
-use crate::syntax::parser;
 
 
 
@@ -238,10 +237,10 @@ impl EngineCommand {
                     EngineCommand::parse_rule(command, s)
                 }
                 else {
-                    Err(Error::NotACommand(s))
+                    Err(Error::UnknownCommand(s))
                 }
             }
-            (_, t, _) => Err(Error::NotACommand(t.to_string()))
+            (_, t, _) => Err(Error::UnknownCommand(t.to_string()))
         }?;
 
         // The tokens should be fully consumed after parsing a command. Otherwise, this is a
@@ -271,12 +270,9 @@ impl EngineCommand {
         };
 
         // Next is the theorem's formula
-        let formula = match parser::FormulaParser::new().parse(lxr) {
-            Ok(f) => f,
-            Err(e) => return Err(Error::InvalidArguments(format!("Invalid formula: {:?}", e)))
-        };
+        let formula = Formula::parse(lxr)?;
 
-        Ok(EngineCommand::ContextCommand(ContextCommand::Theorem(thm_name, formula)))
+        Ok(EngineCommand::ContextCommand(ContextCommand::Theorem(thm_name, Box::new(formula))))
     }
 
 
@@ -290,7 +286,7 @@ impl EngineCommand {
             None => Err(Error::ArgumentsRequired("Expected a theorem name".to_string())),
             Some(r) => match r.expect("LexicalError") {
                 (_, Token::Ident(s), _) => Ok(EngineCommand::ContextCommand(ContextCommand::Use(s))),
-                (_, t, _) => Err(Error::InvalidArguments("Expected a theorem name".to_string()))
+                (_, t, _) => Err(Error::InvalidArguments(format!("Expected a theorem name, got '{t}")))
             }
         }
     }
@@ -309,25 +305,13 @@ impl EngineCommand {
             if lxr.is_finished() {
                 return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
-            match parser::FormulaParser::new().parse(lxr) {
-                Ok(f) => Ok(f),
-                Err(e) => {
-                    dbg!(e);
-                    Err(Error::InvalidArguments("Invalid formula".to_string()))
-                }
-            }
+            Formula::parse(lxr).map(|f| Box::new(f))
         };
         let parse_term = |lxr: &mut Lexer| -> Result<Box<Term>, Error> {
             if lxr.is_finished() {
                 return Err(Error::ArgumentsRequired("Expected a term".to_string()))
             }
-            match parser::TermParser::new().parse(lxr) {
-                Ok(t) => Ok(t),
-                Err(e) => {
-                    dbg!(e);
-                    Err(Error::InvalidArguments("Invalid term".to_string()))
-                }
-            }
+            Term::parse(lxr).map(|t| Box::new(t))
         };
 
         let rc = match rule_name.as_str() {

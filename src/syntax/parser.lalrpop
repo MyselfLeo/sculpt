@@ -1,7 +1,5 @@
 use crate::logic::{Term, Formula};
-use crate::engine::{EngineCommand, ContextCommand, RuleCommand};
 use crate::syntax::lexer;
-use lalrpop_util::ParseError;
 
 grammar;
 
@@ -14,50 +12,50 @@ Terms = CommaSep<Term>;
 //Formulas = CommaSep<Formula>;
 
 
-pub Variable: String = {
+
+
+
+pub Term: Term = {
+    <n:Ident> => Term::Function(n.to_string(), vec![]),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Term::Function(n.to_string(), v)
+}
+
+
+
+pub Formula: Formula = {
+    <f:Implication> => f,
+    Exists <v:Variable> Comma <f:Formula> => Formula::Exists(v.to_string(), Box::new(f)),
+    Forall <v:Variable> Comma <f:Formula> => Formula::Forall(v.to_string(), Box::new(f)),
+}
+
+Variable: String = {
     <s:Ident> => s.to_string()
 }
 
-
-
-pub Term: Box<Term> = {
-    <n:Ident> => Box::new(Term::Function(n.to_string(), vec![])),
-    <n:Ident> OpenParen <v:Terms> CloseParen => Box::new(Term::Function(n.to_string(), v))
-}
-
-
-
-pub Formula: Box<Formula> = {
-    <f:Implication> => f,
-    Exists <v:Variable> Comma <f:Formula> => Box::new(Formula::Exists(v.to_string(), f)),
-    Forall <v:Variable> Comma <f:Formula> => Box::new(Formula::Forall(v.to_string(), f)),
-}
-
-
-PrimitiveFormula: Box<Formula> = {
-    <n:Ident> => Box::new(Formula::Relation(n.to_string(), vec![])),
-    <n:Ident> OpenParen <v:Terms> CloseParen => Box::new(Formula::Relation(n.to_string(), v)),
+PrimitiveFormula: Formula = {
+    <n:Ident> => Formula::Relation(n.to_string(), vec![]),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Formula::Relation(n.to_string(), v),
     <f:Parenthesized> => f,
-    Wave <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
-    Falsum => Box::new(Formula::Falsum),
+    Wave <f:PrimitiveFormula> => Formula::Not(Box::new(f)),
+    Falsum => Formula::Falsum,
 }
 
 
-Parenthesized: Box<Formula> = {
+Parenthesized: Formula = {
     OpenParen <f:Formula> CloseParen => f
 }
 
 
 
-Implication: Box<Formula> = {
-    <f1:BoolOp> DoubleArrow <f2:Implication> => Box::new(Formula::Implies(f1, f2)),
+Implication: Formula = {
+    <f1:BoolOp> DoubleArrow <f2:Implication> => Formula::Implies(Box::new(f1), Box::new(f2)),
     <f:BoolOp> => f,
 }
 
 
-BoolOp: Box<Formula> = {
-    <f1:BoolOp> And <f2:PrimitiveFormula> => Box::new(Formula::And(f1, f2)),
-    <f1:BoolOp> Or <f2:PrimitiveFormula> => Box::new(Formula::Or(f1, f2)),
+BoolOp: Formula = {
+    <f1:BoolOp> And <f2:PrimitiveFormula> => Formula::And(Box::new(f1), Box::new(f2)),
+    <f1:BoolOp> Or <f2:PrimitiveFormula> => Formula::Or(Box::new(f1), Box::new(f2)),
     <f:PrimitiveFormula> => f
 }
 

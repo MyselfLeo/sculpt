@@ -5,14 +5,14 @@ use crate::engine::EngineCommand;
 use crate::error::Error;
 use crate::syntax::lexer::Lexer;
 
-static COMMANDS: [&str; 6] = [
+/*static COMMANDS: [&str; 6] = [
     "context",
     "help",
     "list",
     "undo",
     "exit",
     "quit"
-];
+];*/
 
 #[derive(Clone, PartialEq, EnumDoc, EnumIter)]
 pub enum ReplCommand {
