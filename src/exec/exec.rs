@@ -67,10 +67,9 @@ impl Executor {
         let cmd = EngineCommand::parse(&mut lexer)?;
 
         if let Some(c) = cmd {
-            match self.interpreter.execute(c)? {
-                EngineEffect::NewTheorem(f) => println!("Added `{f}` to context"),
-                _ => ()
-            };
+            for eff in self.interpreter.execute(c)? {
+                Self::print_effect(eff);
+            }
         }
 
         Ok(())
@@ -130,5 +129,16 @@ impl Executor {
         }
 
         Ok(res)
+    }
+
+
+    fn print_effect(effect: EngineEffect) {
+        match effect {
+            EngineEffect::NewTheorem(name, formula) => println!("New theorem: {name} :: {formula}"),
+            EngineEffect::DefinedRelation(r) => println!("Defined relation {r}"),
+            EngineEffect::DefinedTerm(s) => println!("Defined term {s}"),
+            EngineEffect::EnteredProofMode => println!("Entered proof mode"),
+            EngineEffect::ExitedProofMode => println!("Exited proof mode")
+        }
     }
 }

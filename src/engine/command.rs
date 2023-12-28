@@ -153,24 +153,24 @@ impl RuleCommand {
     }
 
 
-    pub fn to_rule(self) -> Rule {
-        match self {
+    pub fn to_rule(&self) -> Rule {
+        match &self {
             RuleCommand::Axiom => Rule::Axiom,
             RuleCommand::Intro => Rule::Intro,
             RuleCommand::Intros => Rule::Intros,
-            RuleCommand::Trans(s) => Rule::Trans(s),
+            RuleCommand::Trans(s) => Rule::Trans(s.clone()),
             RuleCommand::Split => Rule::SplitAnd,
-            RuleCommand::AndLeft(s) => Rule::And(Side::Left, s),
-            RuleCommand::AndRight(s) => Rule::And(Side::Right, s),
+            RuleCommand::AndLeft(s) => Rule::And(Side::Left, s.clone()),
+            RuleCommand::AndRight(s) => Rule::And(Side::Right, s.clone()),
             RuleCommand::KeepLeft => Rule::Keep(Side::Left),
             RuleCommand::KeepRight => Rule::Keep(Side::Right),
-            RuleCommand::FromOr(s) => Rule::FromOr(s),
-            RuleCommand::Generalize(s) => Rule::Generalize(s),
-            RuleCommand::FixAs(s) => Rule::FixAs(s),
-            RuleCommand::Consider(s) => Rule::Consider(s),
-            RuleCommand::RenameAs(s) => Rule::RenameAs(s),
+            RuleCommand::FromOr(s) => Rule::FromOr(s.clone()),
+            RuleCommand::Generalize(s) => Rule::Generalize(s.clone()),
+            RuleCommand::FixAs(s) => Rule::FixAs(s.clone()),
+            RuleCommand::Consider(s) => Rule::Consider(s.clone()),
+            RuleCommand::RenameAs(s) => Rule::RenameAs(s.clone()),
             RuleCommand::FromBottom => Rule::FromBottom,
-            RuleCommand::ExFalso(s) => Rule::ExFalso(s)
+            RuleCommand::ExFalso(s) => Rule::ExFalso(s.clone())
         }
     }
 }

@@ -4,6 +4,7 @@ use crate::error::Error;
 use crate::engine::command::{RuleCommandType, RuleCommandTypeDefault};
 use super::{EngineCommand, ContextCommand};
 use crate::logic::{Formula, Term};
+use crate::logic::rule::Rule;
 use crate::proof::Proof;
 
 
@@ -115,12 +116,11 @@ impl Context {
 /// Returned by Engine::execute
 #[derive(Clone, Debug)]
 pub enum EngineEffect {
-    NewTheorem(Formula),
+    NewTheorem(String, Formula),
     DefinedRelation(String),
     DefinedTerm(String),
     EnteredProofMode,
-    ExitedProofMode,
-    Nothing
+    ExitedProofMode
 }
 
 
@@ -262,53 +262,71 @@ impl Engine {
 
 
 
-    pub fn execute(&mut self, command: EngineCommand) -> Result<EngineEffect, Error> {
+    pub fn execute(&mut self, command: EngineCommand) -> Result<Vec<EngineEffect>, Error> {
+        let mut effects = vec![];
+        let proof_cpy = self.current_proof.clone();
 
-        match (&command, &mut self.current_proof) {
+        match (&command, proof_cpy) {
             // Start of a proof
             (EngineCommand::ContextCommand(ContextCommand::Theorem(..)), Some((_, p))) => {
-                Err(Error::CommandError(format!("Already proving {}", p.goal)))
+                return Err(Error::CommandError(format!("Already proving {}", p.goal)))
             }
             (EngineCommand::ContextCommand(ContextCommand::Theorem(name, goal)), None) => {
                 self.context.expect_not_defined(name)?;
+
+                // Check that the formula is valid
+                self.check_formula(goal, true)?;
 
                 let proof = Proof::start(goal.clone());
 
                 self.current_proof = Some((name.clone(), Box::new(proof)));
                 self.command_stack.push(command);
-                Ok(EngineEffect::EnteredProofMode)
+                effects.push(EngineEffect::EnteredProofMode);
             }
 
 
-            (EngineCommand::ContextCommand(ContextCommand::Use(s)), Some((_, ref mut p))) => {
+            (EngineCommand::ContextCommand(ContextCommand::Use(s)), Some((_, p))) => {
                 if p.is_finished() {
                     return Err(Error::CommandError("Proof is finished".to_string()))
                 }
 
                 match self.context.theorems.get(s) {
-                    None => Err(Error::CommandError(format!("Unknown theorem {s}"))),
+                    None => return Err(Error::CommandError(format!("Unknown theorem {s}"))),
                     Some(thm) => {
-                        p.add_antecedent(thm.clone())?;
-                        Ok(EngineEffect::Nothing)
+                        let (_, curr_proof) = self.current_proof.as_mut().unwrap();
+                        curr_proof.add_antecedent(thm.clone())?;
                     }
                 }
             }
 
             // Rule application to a proof
-            (EngineCommand::RuleCommand(rule), Some((_, ref mut p))) => {
-                match p.apply(rule.clone().to_rule()) {
+            (EngineCommand::RuleCommand(rule), Some(_)) => {
+                // Check that the formulas are valid
+                match rule.to_rule() {
+                    Rule::Trans(f)
+                    | Rule::And(_, f)
+                    | Rule::FromOr(f)
+                    | Rule::Consider(f)
+                    | Rule::ExFalso(f) => {
+                        let mut e = self.check_formula(&f, true)?;
+                        effects.append(&mut e)
+                    },
+                    _ => ()
+                };
+
+                let (_, curr_proof) = self.current_proof.as_mut().unwrap();
+                match curr_proof.apply(rule.clone().to_rule()) {
                     Ok(_) => {
                         self.command_stack.push(command);
-                        Ok(EngineEffect::ExitedProofMode)
                     },
-                    Err(e) => Err(e)
+                    Err(e) => return Err(e)
                 }
             }
 
 
             // Ending a proof using Qed
             (EngineCommand::ContextCommand(ContextCommand::Qed), None) => {
-                Err(Error::CommandError("Not in proof mode".to_string()))
+                return Err(Error::CommandError("Not in proof mode".to_string()))
             }
             (EngineCommand::ContextCommand(ContextCommand::Qed), proof) => {
                 let proof_clone = proof.clone();
@@ -318,16 +336,17 @@ impl Engine {
                     Some((n, p)) => {
                         if p.is_finished() {
                             self.context.add_theorem(&n, Box::new(p.goal.clone()))?;
-                            *proof = None;
+                            self.current_proof = None;
                             self.command_stack.push(command);
-                            Ok(EngineEffect::NewTheorem(p.goal))
+                            effects.push(EngineEffect::ExitedProofMode);
+                            effects.push(EngineEffect::NewTheorem(n, p.goal));
                         }
                         else {
                             let txt = match p.remaining_goals_nb() {
                                 1 => "One goal has not been proven yet".to_string(),
                                 n => format!("{n} goals have not been proven yet")
                             };
-                            Err(Error::CommandError(txt))
+                            return Err(Error::CommandError(txt))
                         }
                     }
                 }
@@ -336,7 +355,7 @@ impl Engine {
 
             // Ending a proof with admit
             (EngineCommand::ContextCommand(ContextCommand::Admit), None) => {
-                Err(Error::CommandError("Not in proof mode".to_string()))
+                return Err(Error::CommandError("Not in proof mode".to_string()))
             }
             (EngineCommand::ContextCommand(ContextCommand::Admit), proof) => {
                 let proof_clone = proof.clone();
@@ -345,9 +364,10 @@ impl Engine {
                     None => unreachable!(),
                     Some((n, p)) => {
                         self.context.add_theorem(&n, Box::new(p.goal.clone()))?;
-                        *proof = None;
+                        self.current_proof = None;
                         self.command_stack.push(command);
-                        Ok(EngineEffect::NewTheorem(p.goal))
+                        effects.push(EngineEffect::ExitedProofMode);
+                        effects.push(EngineEffect::NewTheorem(n, p.goal));
                     }
                 }
             }
@@ -355,9 +375,11 @@ impl Engine {
 
             // Shit happened
             (r, _) => {
-                Err(Error::CommandError(format!("Unable to apply command {}", r)))
+                return Err(Error::CommandError(format!("Unable to apply command {}", r)))
             }
-        }
+        };
+
+        Ok(effects)
     }
 
 
