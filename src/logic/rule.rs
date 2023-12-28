@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 use sculpt_macro::EnumType;
-use crate::{syntax::parser, error::Error};
+use crate::error::Error;
 use super::{Formula, Term, Sequent};
 
 

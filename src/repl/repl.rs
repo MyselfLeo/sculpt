@@ -8,7 +8,6 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::error::Error;
 use crate::engine::{Engine, ContextCommand, RuleCommand, EngineCommand};
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
-use crate::syntax::lexer::Context;
 use crate::tools::{self, ColumnJustification};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -118,12 +117,7 @@ impl Repl {
             Err(_) => return Err(Error::UnableToRead)
         };
 
-        let ctx = match &self.state {
-            ReplState::Working(e, _) => e.namespace.clone(),
-            _ => Context::new()
-        };
-
-        Command::from(&txt, &ctx)
+        Command::from(&txt)
     }
 
 
@@ -263,7 +257,7 @@ impl Repl {
                         println!();
 
                         println!("Theorems:");
-                        let theorems = ctx.context.iter()
+                        let theorems = ctx.context.theorems.iter()
                             .map(|(n, f)| format!("{n} :: {f}"))
                             .collect::<Vec<_>>();
 
@@ -385,7 +379,7 @@ impl Repl {
                         self.state = ReplState::Help(previous(s));
                     },
                     (s, ReplCommand::HelpCommand(cmd)) => {
-                        let command = Command::from(&cmd, &Context::new())?;
+                        let command = Command::from(&cmd)?;
 
                         // if the previous state is also Help or CommandHelp, we use this state's
                         // previous instead of itself to prevent huge help-screen history

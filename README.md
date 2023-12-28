@@ -11,9 +11,9 @@ It can be used as a REPL, but later will be able to prove proofs from a file.
 1. Clone this repository on your system.
 
 2. Inside the repository, use cargo to install the crate on your system:
-```
-cargo install --path .
-```
+    ```
+    cargo install --path .
+    ```
 
 3. You can now use `sculpt` to start the REPL!
 
@@ -24,24 +24,24 @@ cargo install --path .
 
 
 1. Start your proof.
-```
-> proof (A /\ J => Z) => (J => A) => (J \/ Z) => Z
-```
+    ```
+    > proof (A /\ J => Z) => (J => A) => (J \/ Z) => Z
+    ```
 
 2. Apply natural deduction rules. The full list of commands can be found using the `help` command.
-```
-> intros
-> from_or J \/ Z
-> axiom
-> trans A /\ J
-> axiom
-> split
-> trans J
-> axiom
-> axiom
-> axiom
-> axiom
-```
+    ```
+    > intros
+    > from_or J \/ Z
+    > axiom
+    > trans A /\ J
+    > axiom
+    > split
+    > trans J
+    > axiom
+    > axiom
+    > axiom
+    > axiom
+    ```
 
 3. Finish your proof using `qed`. It's done!
 

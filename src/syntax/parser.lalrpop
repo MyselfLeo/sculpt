@@ -11,7 +11,7 @@ grammar;
 
 
 Terms = CommaSep<Term>;
-Formulas = CommaSep<Formula>;
+//Formulas = CommaSep<Formula>;
 
 
 pub Variable: String = {
@@ -21,8 +21,8 @@ pub Variable: String = {
 
 
 pub Term: Box<Term> = {
-    <n:TermName> => Box::new(Term::Function(n.to_string(), vec![])),
-    <n:TermName> OpenParen <v:Terms> CloseParen => Box::new(Term::Function(n.to_string(), v))
+    <n:Ident> => Box::new(Term::Function(n.to_string(), vec![])),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Box::new(Term::Function(n.to_string(), v))
 }
 
 
@@ -35,8 +35,8 @@ pub Formula: Box<Formula> = {
 
 
 PrimitiveFormula: Box<Formula> = {
-    <n:RelationName> => Box::new(Formula::Relation(n.to_string(), vec![])),
-    <n:RelationName> OpenParen <v:Terms> CloseParen => Box::new(Formula::Relation(n.to_string(), v)),
+    <n:Ident> => Box::new(Formula::Relation(n.to_string(), vec![])),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Box::new(Formula::Relation(n.to_string(), v)),
     <f:Parenthesized> => f,
     Wave <f:PrimitiveFormula> => Box::new(Formula::Not(f)),
     Falsum => Box::new(Formula::Falsum),
@@ -85,9 +85,6 @@ extern {
         Admit => lexer::Token::Admit,
         Qed => lexer::Token::Qed,
         Use => lexer::Token::Use,
-        RuleName => lexer::Token::RuleName(<String>),
-        TermName => lexer::Token::Term(<String>),
-        RelationName => lexer::Token::Relation(<String>),
         Ident => lexer::Token::Ident(<String>),
         Falsum => lexer::Token::Falsum,
         Exists => lexer::Token::Exists,

@@ -1,15 +1,16 @@
 use std::fmt::{Debug, Display, Formatter};
-use lalrpop_util::ParseError;
 use strum::EnumIter;
 use sculpt_macro::{EnumDoc, EnumType};
 use crate::{logic::rule::{Rule, RuleType, Side}, error::Error};
 use crate::logic::{Formula, Term};
-use crate::syntax::lexer::{Lexer, LexicalError, Token};
+use crate::syntax::lexer::{Lexer, Token};
 use crate::syntax::parser;
 
 
-static COMMANDS: [&str; 19] = [
-    //"context",
+
+
+
+const DEFAULT_RULES: [&str; 19] = [
     "admit",
     "proof",
     "qed",
@@ -30,6 +31,10 @@ static COMMANDS: [&str; 19] = [
     "from_bottom",
     "exfalso"
 ];
+
+fn is_rule(str: &str) -> bool {
+    DEFAULT_RULES.contains(&str)
+}
 
 
 /// Control command for the engine. Those rules are not directly linked to natural deduction.
@@ -228,7 +233,14 @@ impl EngineCommand {
             (_, Token::Use, _) => EngineCommand::parse_use(command),
             (_, Token::Qed, _) => EngineCommand::parse_qed(command),
             (_, Token::Admit, _) => EngineCommand::parse_admit(command),
-            (_, Token::RuleName(s), _) => EngineCommand::parse_rule(command, s),
+            (_, Token::Ident(s), _) => {
+                if is_rule(&s) {
+                    EngineCommand::parse_rule(command, s)
+                }
+                else {
+                    Err(Error::NotACommand(s))
+                }
+            }
             (_, t, _) => Err(Error::NotACommand(t.to_string()))
         }?;
 
@@ -247,9 +259,6 @@ impl EngineCommand {
         // Next token is the theorem name
         let thm_name = match lxr.next_token().expect("LexicalError") { // todo: use something other than UnexpectedEOF
             Some(Token::Ident(s)) => s,
-            Some(Token::Term(s)) => return Err(Error::AlreadyExists(format!("'{s} is already defined as a term'"))),
-            Some(Token::Relation(s)) => return Err(Error::AlreadyExists(format!("'{s} is already defined as a relation'"))),
-            Some(Token::RuleName(s)) => return Err(Error::AlreadyExists(format!("'{s} is already defined as a rule'"))),
             Some(t) => return Err(Error::InvalidCommand(format!("Expected a name, got '{t}'"))),
             None => return Err(Error::UnexpectedEOF)
         };
@@ -271,8 +280,8 @@ impl EngineCommand {
     }
 
 
-    fn parse_def(lxr: &mut Lexer) -> Result<EngineCommand, Error> {
-        todo!()
+    fn parse_def(_: &mut Lexer) -> Result<EngineCommand, Error> {
+        unimplemented!()
     }
 
 

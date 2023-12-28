@@ -5,31 +5,9 @@
 //! Note that this parser does not parse REPL-specific commands (exit, help, etc). Those are managed
 //! by the REPL itself.
 
-use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use std::hash::Hash;
 use std::str::CharIndices;
 
-// Those may be expanded by code later (extensions, custom rule definition maybe?)
-const DEFAULT_KEYWORDS: [&str; 4] = ["Def", "Thm", "Admit", "Qed"];
-const DEFAULT_RULES: [&str; 16] = [
-    "axiom",
-    "intro",
-    "intros",
-    "trans",
-    "split",
-    "and_left",
-    "and_right",
-    "keep_left",
-    "keep_right",
-    "from_or",
-    "gen",
-    "fix_as",
-    "consider",
-    "rename_as",
-    "from_bottom",
-    "exfalso"
-];
 const SYMBOLS: [&str; 9] = [
     "~",
     "=>",
@@ -78,10 +56,7 @@ pub enum Token {
     Qed,
     Use,
 
-    RuleName(String),   // Known rule name
-    Term(String),       // Known term identifier
-    Relation(String),   // Known relation identifier
-    Ident(String),      // Unknown identifier (new term/relation, thm name, etc.)
+    Ident(String),
 
     Falsum,
     Exists,
@@ -105,9 +80,6 @@ impl Display for Token {
             Token::Admit => "Admit",
             Token::Qed => "Qed",
             Token::Use => "Use",
-            Token::RuleName(s) => s,
-            Token::Term(s) => s,
-            Token::Relation(s) => s,
             Token::Ident(s) => s,
             Token::Falsum => "falsum",
             Token::Exists => "exists",
@@ -127,18 +99,6 @@ impl Display for Token {
 }
 
 
-#[derive(Clone, Debug)]
-pub struct Context {
-    pub terms: HashMap<String, usize>,
-    pub relations: HashMap<String, usize>
-}
-
-impl Context {
-    pub fn new() -> Context {
-        Context { terms: HashMap::new(), relations: HashMap::new() }
-    }
-}
-
 #[derive(Debug)]
 enum BufState {
     AlphaNum,
@@ -149,33 +109,24 @@ enum BufState {
 pub struct Lexer<'input> {
     //pub tokens: Vec<Spanned<Token, usize>>,
 
-    total_length: usize,
     iterator: CharIndices<'input>,
     buf_state: BufState,
     buf: String,
     buf_start: usize,
     curr_pos: usize,
-    line_skip: bool,
-    context: Context
+    line_skip: bool
 }
 
 impl<'input> Lexer<'input> {
-    pub fn from(s: &'input str, context: Context) -> Self {
+    pub fn from(s: &'input str) -> Self {
         Self {
-            total_length: s.len(),
             iterator: s.char_indices(),
             buf_state: BufState::Idle,
             buf: String::new(),
             buf_start: 0,
             curr_pos: 0,
-            line_skip: false,
-            context
+            line_skip: false
         }
-    }
-
-
-    pub fn set_context(&mut self, context: Context) {
-        self.context = context;
     }
 
 
@@ -199,7 +150,7 @@ impl<'input> Lexer<'input> {
 
 
     fn consume_buf(&mut self) -> Result<Spanned<Token, usize>, LexicalError> {
-        match Self::token_from_str(&self.buf, &self.buf_state, &self.context) {
+        match Self::token_from_str(&self.buf, &self.buf_state) {
             None => {
                 Err(LexicalError::UnknownToken((self.buf_start, self.buf.clone(), self.curr_pos - 1)))
             },
@@ -216,34 +167,21 @@ impl<'input> Lexer<'input> {
 
 
 
-    fn token_from_str(buf: &String, buf_state: &BufState, context: &Context) -> Option<Token> {
+    fn token_from_str(buf: &String, buf_state: &BufState) -> Option<Token> {
         let res = match buf_state {
             BufState::Idle => unreachable!(),
             BufState::AlphaNum => {
                 match buf.as_str() {
-                    "Def" => return Some(Token::Def),
-                    "Thm" => return Some(Token::Thm),
-                    "Admit" => return Some(Token::Admit),
-                    "Qed" => return Some(Token::Qed),
-                    "Use" => return Some(Token::Use),
+                    "Def" => Token::Def,
+                    "Thm" => Token::Thm,
+                    "Admit" => Token::Admit,
+                    "Qed" => Token::Qed,
+                    "Use" => Token::Use,
 
-                    "falsum" => return Some(Token::Falsum),
-                    "exists" => return Some(Token::Exists),
-                    "forall" => return Some(Token::Forall),
-                    _ => ()
-                };
-
-                if DEFAULT_RULES.contains(&buf.as_str()) {
-                    Token::RuleName(buf.clone())
-                }
-                else if context.terms.contains_key(buf) {
-                    Token::Term(buf.clone())
-                }
-                else if context.relations.contains_key(buf) {
-                    Token::Relation(buf.clone())
-                }
-                else {
-                    Token::Ident(buf.clone())
+                    "falsum" => Token::Falsum,
+                    "exists" => Token::Exists,
+                    "forall" => Token::Forall,
+                    _ => Token::Ident(buf.clone())
                 }
             }
 

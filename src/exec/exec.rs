@@ -63,7 +63,7 @@ impl Executor {
     }
 
     fn exec_one(&mut self, step: &Step) -> Result<(), Error> {
-        let mut lexer = Lexer::from(step.command_txt.as_str(), self.interpreter.namespace.clone());
+        let mut lexer = Lexer::from(step.command_txt.as_str());
         let cmd = EngineCommand::parse(&mut lexer)?;
 
         if let Some(c) = cmd {

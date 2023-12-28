@@ -3,7 +3,7 @@ use sculpt_macro::EnumDoc;
 use strum::EnumIter;
 use crate::engine::EngineCommand;
 use crate::error::Error;
-use crate::syntax::lexer::{Context, Lexer};
+use crate::syntax::lexer::Lexer;
 
 static COMMANDS: [&str; 6] = [
     "context",
@@ -81,7 +81,7 @@ impl Command {
     }
 
 
-    pub fn from(command_str: &str, context: &Context) -> Result<Command, Error> {
+    pub fn from(command_str: &str) -> Result<Command, Error> {
         let command_str = command_str.trim();
         if command_str.is_empty() {return Ok(Command::ReplCommand(ReplCommand::Return))}
 
@@ -118,7 +118,7 @@ impl Command {
             }
 
             _ => {
-                match EngineCommand::parse(&mut Lexer::from(command_str, context.clone()))? {
+                match EngineCommand::parse(&mut Lexer::from(command_str))? {
                     None => Command::ReplCommand(ReplCommand::Return), // empty command, probably a comment
                     Some(c) => Command::EngineCommand(c)
                 }
