@@ -37,10 +37,7 @@ pub enum ReplState {
 
 impl ReplState {
     pub fn is_quitting(&self) -> bool {
-        match self {
-            ReplState::Quitting => true,
-            _ => false
-        }
+        matches!(self, ReplState::Quitting)
     }
 }
 
@@ -190,10 +187,7 @@ impl Repl {
 
                         let desc_fmt = |d| format!("-- {d}");
                         let desc = cmd.desc().map_or("".to_string(), desc_fmt);
-                        if let Some(n) = name_usg {
-                            Some((n, desc))
-                        }
-                        else {None}
+                        name_usg.map(|n| (n, desc))
                     })
                     .map(|(name, desc)| format!("{:20} {}", name, desc))
                     .collect::<Vec<String>>();
@@ -304,7 +298,7 @@ impl Repl {
         let final_row = terminal::window_size()?.rows;
 
         let valid_command_str = self.get_valid_commands().iter()
-            .map(|cmd| cmd.name().unwrap_or(String::new()))
+            .map(|cmd| cmd.name().unwrap_or_default())
             .collect::<Vec<_>>();
 
         if let Some(e) = &self.last_error {

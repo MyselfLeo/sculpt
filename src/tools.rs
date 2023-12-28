@@ -28,7 +28,7 @@ pub enum ColumnJustification {
 pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustification) -> String {
     const SEP_SIZE: usize = 10;
 
-    if vec.len() == 0 {return String::new()}
+    if vec.is_empty() {return String::new()}
 
     let mut strings: Vec<String> = vec.iter().map(|e| e.to_string()).collect();
     let mut column_length = strings.iter().map(|e| e.len()).max().expect("Iterator was empty");

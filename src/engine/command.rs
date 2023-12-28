@@ -305,13 +305,13 @@ impl EngineCommand {
             if lxr.is_finished() {
                 return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
             }
-            Formula::parse(lxr).map(|f| Box::new(f))
+            Formula::parse(lxr).map(Box::new)
         };
         let parse_term = |lxr: &mut Lexer| -> Result<Box<Term>, Error> {
             if lxr.is_finished() {
                 return Err(Error::ArgumentsRequired("Expected a term".to_string()))
             }
-            Term::parse(lxr).map(|t| Box::new(t))
+            Term::parse(lxr).map(Box::new)
         };
 
         let rc = match rule_name.as_str() {

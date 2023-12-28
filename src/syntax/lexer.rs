@@ -142,10 +142,7 @@ impl<'input> Lexer<'input> {
 
     pub fn is_finished(&self) -> bool {
         let mut peekable = self.iterator.clone().peekable();
-        match peekable.peek() {
-            Some(_) => false,
-            None => true
-        }
+        peekable.peek().is_none()
     }
 
 
@@ -167,11 +164,11 @@ impl<'input> Lexer<'input> {
 
 
 
-    fn token_from_str(buf: &String, buf_state: &BufState) -> Option<Token> {
+    fn token_from_str(buf: &str, buf_state: &BufState) -> Option<Token> {
         let res = match buf_state {
             BufState::Idle => unreachable!(),
             BufState::AlphaNum => {
-                match buf.as_str() {
+                match buf {
                     "Def" => Token::Def,
                     "Thm" => Token::Thm,
                     "Admit" => Token::Admit,
@@ -181,12 +178,12 @@ impl<'input> Lexer<'input> {
                     "falsum" => Token::Falsum,
                     "exists" => Token::Exists,
                     "forall" => Token::Forall,
-                    _ => Token::Ident(buf.clone())
+                    _ => Token::Ident(buf.to_string())
                 }
             }
 
             BufState::Sym => {
-                match buf.as_str() {
+                match buf {
                     "~" => Token::Wave,
                     "=>" => Token::DoubleArrow,
                     "\\/" => Token::Or,

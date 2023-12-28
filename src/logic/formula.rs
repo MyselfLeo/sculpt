@@ -5,9 +5,9 @@ use crate::logic::term::Term;
 use crate::syntax::lexer::Lexer;
 
 /// First-order logic formula
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum Formula {
-    Falsum,
+    #[default] Falsum,
     Relation(String, Vec<Term>),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
@@ -109,8 +109,7 @@ impl Formula {
             Formula::Falsum => vec![],
             Formula::Relation(_, t) => {
                 t.iter()
-                    .map(|t| t.domain())
-                    .flatten()
+                    .flat_map(|t| t.domain())
                     .filter(|v| !bound.contains(v))
                     .collect()
             },
@@ -196,7 +195,7 @@ impl Display for Formula {
             Formula::Falsum => write!(f, "falsum"),
 
             Formula::Relation(v, t) => {
-                if t.len() == 0 {
+                if t.is_empty() {
                     write!(f, "{v}")
                 }
                 else {
@@ -206,7 +205,7 @@ impl Display for Formula {
 
             Formula::Not(formula) => match formula.as_ref() {
                 Formula::Relation(v, t) => {
-                    if t.len() == 0 {
+                    if t.is_empty() {
                         write!(f, "~{}", v)
                     }
                     else {
@@ -222,12 +221,5 @@ impl Display for Formula {
             Formula::Forall(v, p) => write!(f, "forall {v}, {p}"),
             Formula::Exists(v, p) => write!(f, "exists {v}, {p}")
         }
-    }
-}
-
-
-impl Default for Formula {
-    fn default() -> Self {
-        Formula::Falsum
     }
 }

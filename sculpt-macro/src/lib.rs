@@ -54,11 +54,11 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     }
 
     // Nothing to document
-    if docs.len() == 0 { return quote! {}.into()}
+    if docs.is_empty() { return quote! {}.into()}
 
 
 
-    let function_signs: Vec<_> = docs.iter().map(|(doc_type, _)| {
+    let function_signs: Vec<_> = docs.keys().map(|doc_type| {
         quote! {
             fn #doc_type(&self) -> Option<String>
         }
@@ -227,7 +227,7 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
 
 fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
     let name = &variant.ident;
-    if variant.fields.len() == 0 {
+    if variant.fields.is_empty() {
         quote! { #name }
     }
     else {
@@ -239,7 +239,7 @@ fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
 
 fn default_args(variant: &Variant) -> proc_macro2::TokenStream {
     let name = &variant.ident;
-    if variant.fields.len() == 0 {
+    if variant.fields.is_empty() {
         quote! { #name }
     }
     else {

@@ -87,7 +87,7 @@ impl Command {
 
 
         // Try to parse REPL-specific commands. If it fails, try to parse an engine command otherwise.
-        let (cname, cparam) = command_str.split_once(' ').unwrap_or_else(|| (command_str, ""));
+        let (cname, cparam) = command_str.split_once(' ').unwrap_or((command_str, ""));
         let cparam = cparam.to_string();
         let command = match (cname, cparam) {
             ("context", s) if !s.is_empty() => Command::ReplCommand(ReplCommand::Context(s)),

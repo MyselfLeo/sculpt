@@ -41,10 +41,10 @@ impl Proof {
 
     pub fn add_antecedent(&mut self, ante: Box<Formula>) -> Result<(), Error> {
         match self.current_goal {
-            None => return Err(Error::CommandError("Proof is finished".to_string())),
+            None => Err(Error::CommandError("Proof is finished".to_string())),
             Some(ref mut cg) => {
                 if !cg.antecedents.contains(&ante) {
-                    cg.antecedents.push(ante);
+                    cg.antecedents.push(*ante);
                 }
                 Ok(())
             }

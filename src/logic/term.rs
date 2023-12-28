@@ -17,7 +17,7 @@ impl Display for Term {
         match self {
             Term::Variable(v) => write!(f, "{v}"),
             Term::Function(v, t) => {
-                if t.len() == 0 {
+                if t.is_empty() {
                     write!(f, "{v}")
                 }
                 else {
@@ -55,14 +55,9 @@ impl Term {
             *self = new.clone();
         }
 
-        else {
-            match self {
-                Term::Function(_, terms) => {
-                    for t in terms {
-                        t.rewrite(old, new)
-                    }
-                }
-                _ => ()
+        else if let Term::Function(_, terms) = self {
+            for t in terms {
+                t.rewrite(old, new)
             }
         }
     }
@@ -76,8 +71,7 @@ impl Term {
             Term::Variable(x) => vec![x.clone()],
             Term::Function(_, terms) => {
                 terms.iter()
-                    .map(|t| t.domain())
-                    .flatten()
+                    .flat_map(|t| t.domain())
                     .collect()
             }
         }

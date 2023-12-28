@@ -94,7 +94,7 @@ impl Rule {
                 match sequent.consequent.as_ref() {
                     Formula::Implies(lhs, rhs) => {
                         let mut antecedents = sequent.antecedents.clone();
-                        antecedents.push(lhs.to_owned());
+                        antecedents.push(*lhs.to_owned());
                         
                         let new_seq = vec![
                             Sequent::new(antecedents, rhs.to_owned())
@@ -159,7 +159,7 @@ impl Rule {
                     Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula")))
                 };*/
 
-                let implication = Formula::Implies(prop.clone(), (&sequent.consequent).to_owned());
+                let implication = Formula::Implies(prop.clone(), sequent.consequent.to_owned());
 
                 let new_seq = vec![
                     Sequent::new(sequent.antecedents.clone(), Box::new(implication)),
@@ -182,8 +182,8 @@ impl Rule {
 
             Rule::And(s, prop) => {
                 let and = match s {
-                    Side::Left => Formula::And(prop.clone(), (&sequent.consequent).to_owned()),
-                    Side::Right => Formula::And((&sequent.consequent).to_owned(), prop.clone()),
+                    Side::Left => Formula::And(prop.clone(), sequent.consequent.to_owned()),
+                    Side::Right => Formula::And(sequent.consequent.to_owned(), prop.clone()),
                 };
 
                 let new_seq = vec![
@@ -224,8 +224,8 @@ impl Rule {
 
                 let mut with_prop1 = sequent.antecedents.clone();
                 let mut with_prop2 = sequent.antecedents.clone();
-                with_prop1.push(left_prop);
-                with_prop2.push(right_prop);
+                with_prop1.push(*left_prop);
+                with_prop2.push(*right_prop);
 
                 let new_seq = vec![
                     Sequent::new(sequent.antecedents.clone(), or_prop.clone()),
@@ -241,12 +241,12 @@ impl Rule {
 
             Rule::Generalize(term) => {
                 // the term must be present in the formula for it to be generalized
-                if !sequent.consequent.exists(&term) {return Err(Error::CommandError(format!("{term} not present in the goal")))}
+                if !sequent.consequent.exists(term) {return Err(Error::CommandError(format!("{term} not present in the goal")))}
 
                 let var = sequent.consequent.new_variable();
 
                 let mut generalized = sequent.consequent.clone();
-                generalized.rewrite(&term, &Term::Variable(var.clone()));
+                generalized.rewrite(term, &Term::Variable(var.clone()));
 
                 let quantified = Formula::Forall(var, generalized);
 
@@ -262,10 +262,10 @@ impl Rule {
                 match sequent.consequent.as_ref() {
 
                     Formula::Exists(exists, formula) => {
-                        if sequent.consequent.exists(&term) {return Err(Error::InvalidArguments(format!("{term} already exists")))}
+                        if sequent.consequent.exists(term) {return Err(Error::InvalidArguments(format!("{term} already exists")))}
 
                         let mut fixed = formula.clone();
-                        fixed.rewrite(&Term::Variable(exists.clone()), &term);
+                        fixed.rewrite(&Term::Variable(exists.clone()), term);
 
                         let new_seq = vec![
                             Sequent::new(sequent.antecedents.clone(), fixed)
@@ -283,11 +283,11 @@ impl Rule {
             Rule::Consider(new_form) => {
                 match new_form.as_ref() {
                     Formula::Exists(var, nf) => {
-                        if sequent.consequent.domain().contains(&var) {return Err(Error::CommandError(format!("{var} already exists in the goal")))}
-                        if sequent.domain().contains(&var) {return Err(Error::CommandError(format!("{var} already exists")))}
+                        if sequent.consequent.domain().contains(var) {return Err(Error::CommandError(format!("{var} already exists in the goal")))}
+                        if sequent.domain().contains(var) {return Err(Error::CommandError(format!("{var} already exists")))}
 
                         let mut with_nf = sequent.clone();
-                        with_nf.antecedents.push(nf.clone());
+                        with_nf.antecedents.push(*nf.clone());
 
                         let mut goal_nf = sequent.clone();
                         goal_nf.consequent = new_form.clone();
@@ -300,7 +300,7 @@ impl Rule {
                         Ok(new_seq)
                     }
 
-                    _ => Err(Error::InvalidArguments(format!("Expected exists <var>, <Formula>")))
+                    _ => Err(Error::InvalidArguments("Expected exists <var>, <Formula>".to_string()))
                 }
             }
 
@@ -341,7 +341,7 @@ impl Rule {
                 };
 
                 let mut with_prop = sequent.antecedents.clone();
-                with_prop.push(new_prop);
+                with_prop.push(*new_prop);
 
                 let new_seq = vec![
                     Sequent::new(with_prop, Box::new(Formula::Falsum))
