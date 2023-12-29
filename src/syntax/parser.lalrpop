@@ -1,0 +1,100 @@
+use crate::logic::{Term, Formula};
+use crate::syntax::lexer;
+
+grammar;
+
+
+
+
+
+
+Terms = CommaSep<Term>;
+//Formulas = CommaSep<Formula>;
+
+
+
+
+
+pub Term: Term = {
+    <n:Ident> => Term::Function(n.to_string(), vec![]),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Term::Function(n.to_string(), v)
+}
+
+
+
+pub Formula: Formula = {
+    <f:Implication> => f,
+    Exists <v:Variable> Comma <f:Formula> => Formula::Exists(v.to_string(), Box::new(f)),
+    Forall <v:Variable> Comma <f:Formula> => Formula::Forall(v.to_string(), Box::new(f)),
+}
+
+Variable: String = {
+    <s:Ident> => s.to_string()
+}
+
+PrimitiveFormula: Formula = {
+    <n:Ident> => Formula::Relation(n.to_string(), vec![]),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Formula::Relation(n.to_string(), v),
+    <f:Parenthesized> => f,
+    Wave <f:PrimitiveFormula> => Formula::Not(Box::new(f)),
+    Falsum => Formula::Falsum,
+}
+
+
+Parenthesized: Formula = {
+    OpenParen <f:Formula> CloseParen => f
+}
+
+
+
+Implication: Formula = {
+    <f1:BoolOp> DoubleArrow <f2:Implication> => Formula::Implies(Box::new(f1), Box::new(f2)),
+    <f:BoolOp> => f,
+}
+
+
+BoolOp: Formula = {
+    <f1:BoolOp> And <f2:PrimitiveFormula> => Formula::And(Box::new(f1), Box::new(f2)),
+    <f1:BoolOp> Or <f2:PrimitiveFormula> => Formula::Or(Box::new(f1), Box::new(f2)),
+    <f:PrimitiveFormula> => f
+}
+
+
+// Comma separated elements
+CommaSep<T>: Vec<T> = { // (1)
+    <mut v:(<T> Comma)*> <e:T?> => match e { // (2)
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+
+// Import custom lexer
+extern {
+    type Location = usize;
+    type Error = lexer::LexicalError;
+
+    enum lexer::Token {
+        Def => lexer::Token::Def,
+        Thm => lexer::Token::Thm,
+        Admit => lexer::Token::Admit,
+        Qed => lexer::Token::Qed,
+        Use => lexer::Token::Use,
+        Ident => lexer::Token::Ident(<String>),
+        Falsum => lexer::Token::Falsum,
+        Exists => lexer::Token::Exists,
+        Forall => lexer::Token::Forall,
+        Wave => lexer::Token::Wave,
+        DoubleArrow => lexer::Token::DoubleArrow,
+        Or => lexer::Token::Or,
+        And => lexer::Token::And,
+        OpenParen => lexer::Token::OpenParen,
+        CloseParen => lexer::Token::CloseParen,
+        Comma => lexer::Token::Comma,
+        Dot => lexer::Token::Dot,
+        DoubleColon => lexer::Token::DoubleColon
+    }
+}

@@ -1,12 +1,14 @@
 use std::fmt::{Display, Formatter};
-use crate::{parser, tools};
+use crate::{syntax::parser, tools};
+use crate::error::Error;
 use crate::logic::term::Term;
+use crate::syntax::lexer::Lexer;
 
 /// First-order logic formula
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum Formula {
-    Falsum,
-    Relation(String, Vec<Box<Term>>),
+    #[default] Falsum,
+    Relation(String, Vec<Term>),
     Not(Box<Formula>),
     Or(Box<Formula>, Box<Formula>),
     And(Box<Formula>, Box<Formula>),
@@ -16,11 +18,9 @@ pub enum Formula {
 }
 
 impl Formula {
-    /// Creates a new formula by parsing a string.
-    /// Note that identifiers starting with a lowercase letter will be considered terms,
-    /// and those starting with an uppercase letter will be considered relations.
-    pub fn from_str(str: &str) -> Result<Box<Formula>, String> {
-        parser::FormulaParser::new().parse(str).map_err(|_| "Invalid formula".to_string())
+    /// Creates a new formula by parsing the given tokens.
+    pub fn parse(lxr: &mut Lexer) -> Result<Formula, Error> {
+        parser::FormulaParser::new().parse(lxr).map_err(|_| Error::InvalidArguments("Invalid formula".to_string()))
     }
 
     /// Return the precedence of the formula based on its type.
@@ -109,8 +109,7 @@ impl Formula {
             Formula::Falsum => vec![],
             Formula::Relation(_, t) => {
                 t.iter()
-                    .map(|t| t.domain())
-                    .flatten()
+                    .flat_map(|t| t.domain())
                     .filter(|v| !bound.contains(v))
                     .collect()
             },
@@ -196,7 +195,7 @@ impl Display for Formula {
             Formula::Falsum => write!(f, "falsum"),
 
             Formula::Relation(v, t) => {
-                if t.len() == 0 {
+                if t.is_empty() {
                     write!(f, "{v}")
                 }
                 else {
@@ -206,7 +205,7 @@ impl Display for Formula {
 
             Formula::Not(formula) => match formula.as_ref() {
                 Formula::Relation(v, t) => {
-                    if t.len() == 0 {
+                    if t.is_empty() {
                         write!(f, "~{}", v)
                     }
                     else {

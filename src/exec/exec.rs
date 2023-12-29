@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::Path;
 use crate::error::Error;
-use crate::interpreter::{Interpreter, InterpreterCommand, InterpreterEffect};
+use crate::engine::{Engine, EngineCommand, EngineEffect};
+use crate::syntax::lexer::Lexer;
 
 const STEP_SEP: char = '.';
 
@@ -18,30 +19,30 @@ pub struct Executor {
     pub filepath: String,
 
     pub steps: Vec<Step>,
-    current_step: usize,
+    //current_step: usize,
 
-    interpreter: Interpreter
+    interpreter: Engine
 }
 
 impl Executor {
     pub fn from_file(path: String) -> Result<Executor, Error> {
-        let content = fs::read_to_string(&path).or_else(|_| Err(Error::UnableToRead))?;
+        let content = fs::read_to_string(&path).map_err(|_| Error::UnableToRead)?;
         let steps = Self::parse_steps(&content)?;
 
 
-        if steps.len() == 0 { return Err(Error::EmptyFile(path.clone())) }
+        if steps.is_empty() { return Err(Error::EmptyFile(path.clone())) }
 
         let filename = Path::new(&path)
             .file_name()
             .map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string());
 
-        Ok(Executor {filepath: path, steps, current_step: 0, interpreter: Interpreter::new(filename)})
+        Ok(Executor {filepath: path, steps, /*current_step: 0,*/ interpreter: Engine::new(filename)})
     }
 
 
-    pub fn current_step(&self) -> Step {
-        self.steps[self.current_step].clone()
-    }
+    //pub fn current_step(&self) -> Step {
+    //    self.steps[self.current_step].clone()
+    //}
 
 
 
@@ -62,23 +63,26 @@ impl Executor {
     }
 
     fn exec_one(&mut self, step: &Step) -> Result<(), Error> {
-        let cmd = InterpreterCommand::from(&step.command_txt)?;
-        match self.interpreter.execute(cmd)? {
-            InterpreterEffect::NewFormula(f) => println!("Added `{f}` to context"),
-            _ => ()
-        };
+        let mut lexer = Lexer::from(step.command_txt.as_str());
+        let cmd = EngineCommand::parse(&mut lexer)?;
+
+        if let Some(c) = cmd {
+            for eff in self.interpreter.execute(c)? {
+                Self::print_effect(eff);
+            }
+        }
 
         Ok(())
     }
 
 
 
-    fn filename(&self) -> String {
+    /*fn filename(&self) -> String {
         let path = Path::new(&self.filepath);
         path.file_name().map_or("UNKNOWN".to_string(), |s| s.to_str().unwrap().to_string())
-    }
+    }*/
 
-    fn parse_steps(content: &String) -> Result<Vec<Step>, Error> {
+    fn parse_steps(content: &str) -> Result<Vec<Step>, Error> {
         let mut res = vec![];
 
         let mut line_nb = 0;
@@ -99,7 +103,7 @@ impl Executor {
                 continue;
             }
             if c == STEP_SEP {
-                if buf.len() > 0 {
+                if !buf.is_empty() {
                     res.push(Step {
                         command_txt: buf.trim().to_string(),
                         start: buf_start,
@@ -125,5 +129,16 @@ impl Executor {
         }
 
         Ok(res)
+    }
+
+
+    fn print_effect(effect: EngineEffect) {
+        match effect {
+            EngineEffect::NewTheorem(name, formula) => println!("New theorem: {name} :: {formula}"),
+            EngineEffect::DefinedRelation(r) => println!("Defined relation {r}"),
+            EngineEffect::DefinedTerm(s) => println!("Defined term {s}"),
+            EngineEffect::EnteredProofMode => println!("Entered proof mode"),
+            EngineEffect::ExitedProofMode => println!("Exited proof mode")
+        }
     }
 }

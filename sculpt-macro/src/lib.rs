@@ -1,8 +1,8 @@
 extern crate proc_macro;
-use proc_macro::TokenStream;
+use proc_macro::{TokenStream};
 use std::collections::HashMap;
-use quote::{format_ident, quote};
-use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, Lit, Variant};
+use quote::{format_ident, quote, TokenStreamExt};
+use syn::{parse_macro_input, ItemEnum, Ident, LitStr, ExprAssign, Token, Expr, Lit, Variant, Type, PathArguments};
 use syn::punctuated::Punctuated;
 
 
@@ -54,11 +54,11 @@ pub fn derive_repl_doc(input: TokenStream) -> TokenStream {
     }
 
     // Nothing to document
-    if docs.len() == 0 { return quote! {}.into()}
+    if docs.is_empty() { return quote! {}.into()}
 
 
 
-    let function_signs: Vec<_> = docs.iter().map(|(doc_type, _)| {
+    let function_signs: Vec<_> = docs.keys().map(|doc_type| {
         quote! {
             fn #doc_type(&self) -> Option<String>
         }
@@ -227,7 +227,7 @@ pub fn derive_enum_type(input: TokenStream) -> TokenStream {
 
 fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
     let name = &variant.ident;
-    if variant.fields.len() == 0 {
+    if variant.fields.is_empty() {
         quote! { #name }
     }
     else {
@@ -239,7 +239,7 @@ fn no_arg_pattern(variant: &Variant) -> proc_macro2::TokenStream {
 
 fn default_args(variant: &Variant) -> proc_macro2::TokenStream {
     let name = &variant.ident;
-    if variant.fields.len() == 0 {
+    if variant.fields.is_empty() {
         quote! { #name }
     }
     else {
@@ -248,8 +248,38 @@ fn default_args(variant: &Variant) -> proc_macro2::TokenStream {
                 f.ty.clone()
             })
             .map(|t| {
+                if let Type::Path(tp) = t {
+                    let leading = tp.path.leading_colon;
+                    let mut segments = proc_macro2::TokenStream::new();
+                    for segment in tp.path.segments {
+                        segments.append(segment.ident);
+
+                        match segment.arguments {
+                            PathArguments::None => {}
+                            PathArguments::AngleBracketed(arg) => {
+                                segments.extend(quote! {::});
+                                segments.extend(quote! {#arg});
+                            }
+                            PathArguments::Parenthesized(arg) => {
+                                segments.extend(quote! {#arg});
+                            }
+                        }
+
+                        segments.extend(quote! {::});
+                    }
+
+                    quote! {
+                        #leading #segments
+                    }
+                } else {
+                    quote! {
+                        #t
+                    }
+                }
+            })
+            .map(|t| {
                quote! {
-                   #t::default()
+                   #t default()
                }
             })
             .collect::<Vec<_>>();

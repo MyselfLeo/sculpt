@@ -1,26 +1,36 @@
 mod proof;
 mod tools;
 mod logic;
-mod interpreter;
+mod engine;
 mod repl;
 mod error;
 mod exec;
+mod syntax;
 
-
-use std::fs;
+use std::env;
 use error::Error;
-use lalrpop_util::lalrpop_mod;
-lalrpop_mod!(pub parser);
-
 use repl::Repl;
-use crate::exec::Executor;
-use crate::interpreter::Interpreter;
+use exec::Executor;
+
+
 
 
 fn start_repl() -> Result<(), Error> {
     let mut repl = Repl::new();
     repl.start().unwrap();
     Ok(())
+}
+
+fn exec_file(filename: String) {
+    let mut exec = Executor::from_file(filename).unwrap();
+
+    match exec.exec_all() {
+        Ok(_) => {}
+        Err(e) => {
+            println!("ERROR: {}", e.0);
+            println!("  from {:?} to {:?}", e.1.start, e.1.end)
+        }
+    }
 }
 
 
@@ -41,22 +51,21 @@ fn start_repl() -> Result<(), Error> {
 
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
 
-    const FILE: &str = "examples/test.sculpt";
-
-    let mut exec= Executor::from_file(FILE.to_string()).unwrap();
-
-    match exec.exec_all() {
-        Ok(_) => {}
-        Err(e) => {
-            println!("ERROR: {}", e.0);
-            println!("  from {:?} to {:?}", e.1.start, e.1.end)
+    if args.len() == 1 || &args[1] == "repl" {
+        match start_repl() {
+            Ok(_) => (),
+            Err(e) => eprintln!("ERROR: {e}"),
         }
     }
-
-
-    /*match start_repl() {
-        Ok(_) => (),
-        Err(e) => eprintln!("ERROR: {e}"),
-    }*/
+    else if &args[1] == "exec" {
+        if args.len() == 2 {
+            println!("ERROR: Expected a file name");
+            std::process::exit(1);
+        }
+        else {
+            exec_file(args[2].clone())
+        }
+    }
 }

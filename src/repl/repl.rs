@@ -6,7 +6,7 @@ use crossterm::{execute, terminal};
 use strum::IntoEnumIterator;
 use unicode_segmentation::UnicodeSegmentation;
 use crate::error::Error;
-use crate::interpreter::{Interpreter, EngineCommand, RuleCommand, InterpreterCommand};
+use crate::engine::{Engine, ContextCommand, RuleCommand, EngineCommand};
 use crate::repl::command::{Command, ReplCommand, ReplCommandReplDoc};
 use crate::tools::{self, ColumnJustification};
 
@@ -28,7 +28,7 @@ macro_rules! titleline {
 #[derive(Clone)]
 pub enum ReplState {
     Idle,
-    Working(Box<Interpreter>, Box<ReplState>),
+    Working(Box<Engine>, Box<ReplState>),
     Help(Box<ReplState>),
     CommandHelp(Command, Box<ReplState>),
     CommandStack(Box<ReplState>),
@@ -37,10 +37,7 @@ pub enum ReplState {
 
 impl ReplState {
     pub fn is_quitting(&self) -> bool {
-        match self {
-            ReplState::Quitting => true,
-            _ => false
-        }
+        matches!(self, ReplState::Quitting)
     }
 }
 
@@ -83,7 +80,7 @@ impl Repl {
             ReplState::Working(inter, _) => {
                 res.extend(inter.get_valid_commands()
                    .iter()
-                   .map(|cmd| Command::InterpreterCommand(cmd.clone()))
+                   .map(|cmd| Command::EngineCommand(cmd.clone()))
                    .collect::<Vec<_>>()
                 );
                 res.push(Command::ReplCommand(ReplCommand::Undo));
@@ -174,11 +171,11 @@ impl Repl {
                 for repl_command in ReplCommand::iter() {
                     cmds.push(Command::ReplCommand(repl_command));
                 }
-                for engine_command in EngineCommand::iter() {
-                    cmds.push(Command::InterpreterCommand(InterpreterCommand::EngineCommand(engine_command)));
+                for engine_command in ContextCommand::iter() {
+                    cmds.push(Command::EngineCommand(EngineCommand::ContextCommand(engine_command)));
                 }
                 for rule_command in RuleCommand::iter() {
-                    cmds.push(Command::InterpreterCommand(InterpreterCommand::RuleCommand(rule_command)))
+                    cmds.push(Command::EngineCommand(EngineCommand::RuleCommand(rule_command)))
                 }
 
                 let strings = cmds.iter()
@@ -190,10 +187,7 @@ impl Repl {
 
                         let desc_fmt = |d| format!("-- {d}");
                         let desc = cmd.desc().map_or("".to_string(), desc_fmt);
-                        if let Some(n) = name_usg {
-                            Some((n, desc))
-                        }
-                        else {None}
+                        name_usg.map(|n| (n, desc))
                     })
                     .map(|(name, desc)| format!("{:20} {}", name, desc))
                     .collect::<Vec<String>>();
@@ -256,14 +250,14 @@ impl Repl {
 
                         println!();
 
-                        println!("Context:");
-                        let assumptions = ctx.context.iter()
-                            .map(|f| f.to_string())
+                        println!("Theorems:");
+                        let theorems = ctx.context.theorems.iter()
+                            .map(|(n, f)| format!("{n} :: {f}"))
                             .collect::<Vec<_>>();
 
-                        println!("{}", tools::in_columns(&assumptions, terminal::size()?.0 as usize, ColumnJustification::Balanced));
+                        println!("{}", tools::in_columns(&theorems, terminal::size()?.0 as usize, ColumnJustification::Balanced));
                     }
-                    Some(p) => p.print(),
+                    Some((_, p)) => p.print(),
                 }
             }
 
@@ -283,8 +277,8 @@ impl Repl {
                 let cmd_strs = p.get_current_stack().iter()
                     .map(|e| {
                         match e {
-                            InterpreterCommand::EngineCommand(ec) => ec.to_string(),
-                            InterpreterCommand::RuleCommand(rc) => format!("  {rc}"),
+                            EngineCommand::ContextCommand(ec) => ec.to_string(),
+                            EngineCommand::RuleCommand(rc) => format!("  {rc}"),
                         }
                     })
                     .collect::<Vec<String>>();
@@ -304,7 +298,7 @@ impl Repl {
         let final_row = terminal::window_size()?.rows;
 
         let valid_command_str = self.get_valid_commands().iter()
-            .map(|cmd| cmd.name().unwrap_or(String::new()))
+            .map(|cmd| cmd.name().unwrap_or_default())
             .collect::<Vec<_>>();
 
         if let Some(e) = &self.last_error {
@@ -357,7 +351,7 @@ impl Repl {
                 match (state, c) {
                     // Start context
                     (ReplState::Idle, ReplCommand::Context(s)) => {
-                        let ctx = Interpreter::new(s);
+                        let ctx = Engine::new(s);
                         self.state = ReplState::Working(Box::new(ctx), Box::new(ReplState::Idle));
                     }
 
@@ -411,7 +405,7 @@ impl Repl {
 
 
             // Other commands (that could be found in a file for example)
-            (ReplState::Working(ref mut inter, ref mut prev), Command::InterpreterCommand(cmd)) => {
+            (ReplState::Working(ref mut inter, ref mut prev), Command::EngineCommand(cmd)) => {
                 inter.execute(cmd)?;
                 *prev = Box::new(curr_clone);
             },

@@ -1,10 +1,19 @@
-Thm a_and_j ::  A /\ J => Z.  admit.
-Thm a_if_j  ::  J => A.       admit.
-Thm j_or_z  ::  J \/ Z.       admit.
+// Def A, J, Z :: Prop.
+// Def t :: Term.
+// Def test :: nat -> nat.
+
+Thm a_and_j ::  A /\ J => Z.  Admit.
+Thm a_if_j  ::  J => A.       Admit.
+Thm j_or_z  ::  J \/ Z.       Admit.
 
 
 Thm zoe_va_paris :: Z.
-    use a_and_j.
-    use a_if_j.
-    use j_or_z.
-qed.
+    Use a_and_j.
+    Use a_if_j.
+    Use j_or_z.
+
+    trans forall x, A(x).
+    from_or A \/ J.
+    intros.
+    and_left J => A => J.
+Admit.

@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter};
 use strum::EnumIter;
 use sculpt_macro::EnumType;
-use crate::{parser, error::Error};
+use crate::error::Error;
 use super::{Formula, Term, Sequent};
 
 
@@ -34,20 +34,20 @@ pub enum Rule {
     Axiom,
     Intro,
     Intros,
-    Trans(String),
+    Trans(Box<Formula>),
     SplitAnd,
-    And(Side, String),
+    And(Side, Box<Formula>),
     Keep(Side),
-    FromOr(String),
+    FromOr(Box<Formula>),
 
-    Generalize(String),
-    FixAs(String),
-    Consider(String),
+    Generalize(Box<Term>),
+    FixAs(Box<Term>),
+    Consider(Box<Formula>),
     RenameAs(String),
 
 
     FromBottom,
-    ExFalso(String)
+    ExFalso(Box<Formula>)
 }
 
 impl Display for Rule {
@@ -68,7 +68,7 @@ impl Display for Rule {
             Rule::RenameAs(s) => write!(f, "Rename {s}"),
 
             Rule::FromBottom => write!(f, "FromBottom"),
-            Rule::ExFalso(_) => write!(f, "ExFalso")
+            Rule::ExFalso(s) => write!(f, "ExFalso {s}")
         }
     }
 }
@@ -94,7 +94,7 @@ impl Rule {
                 match sequent.consequent.as_ref() {
                     Formula::Implies(lhs, rhs) => {
                         let mut antecedents = sequent.antecedents.clone();
-                        antecedents.push(lhs.to_owned());
+                        antecedents.push(*lhs.to_owned());
                         
                         let new_seq = vec![
                             Sequent::new(antecedents, rhs.to_owned())
@@ -154,16 +154,16 @@ impl Rule {
 
 
             Rule::Trans(prop) => {
-                let introduced_prop = match Formula::from_str(prop) {
+                /*let introduced_prop = match Formula::from_str(prop) {
                     Ok(f) => f,
                     Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula")))
-                };
+                };*/
 
-                let implication = Formula::Implies(introduced_prop.clone(), (&sequent.consequent).to_owned());
+                let implication = Formula::Implies(prop.clone(), sequent.consequent.to_owned());
 
                 let new_seq = vec![
                     Sequent::new(sequent.antecedents.clone(), Box::new(implication)),
-                    Sequent::new(sequent.antecedents.clone(), introduced_prop)
+                    Sequent::new(sequent.antecedents.clone(), prop.clone())
                 ];
 
                 Ok(new_seq)
@@ -175,20 +175,15 @@ impl Rule {
                 let is_axiom = sequent.antecedents.contains(&sequent.consequent);
 
                 if is_axiom { Ok(vec![]) }
-                else { Err(Error::CommandError(format!("Not an axiom"))) }
+                else { Err(Error::CommandError("Not an axiom".to_string())) }
             }
 
 
 
             Rule::And(s, prop) => {
-                let introduced_prop = match Formula::from_str(prop) {
-                    Ok(f) => f,
-                    Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula")))
-                };
-
                 let and = match s {
-                    Side::Left => Formula::And(introduced_prop, (&sequent.consequent).to_owned()),
-                    Side::Right => Formula::And((&sequent.consequent).to_owned(), introduced_prop),
+                    Side::Left => Formula::And(prop.clone(), sequent.consequent.to_owned()),
+                    Side::Right => Formula::And(sequent.consequent.to_owned(), prop.clone()),
                 };
 
                 let new_seq = vec![
@@ -222,23 +217,18 @@ impl Rule {
 
 
             Rule::FromOr(or_prop) => {
-                let or = match Formula::from_str(or_prop) {
-                    Ok(f) => f,
-                    Err(_) => return Err(Error::InvalidArguments(format!("Expected a formula in the form P \\/ Q")))
-                };
-
-                let (left_prop, right_prop) = match *or.to_owned() {
+                let (left_prop, right_prop) = match *or_prop.clone() {
                     Formula::Or(lhs, rhs) => (lhs.clone(), rhs.clone()),
-                    _ => return Err(Error::InvalidArguments(format!("Expected a formula in the form P \\/ Q")))
+                    _ => return Err(Error::InvalidArguments("Expected a formula in the form P \\/ Q".to_string()))
                 };
 
                 let mut with_prop1 = sequent.antecedents.clone();
                 let mut with_prop2 = sequent.antecedents.clone();
-                with_prop1.push(left_prop);
-                with_prop2.push(right_prop);
+                with_prop1.push(*left_prop);
+                with_prop2.push(*right_prop);
 
                 let new_seq = vec![
-                    Sequent::new(sequent.antecedents.clone(), or.clone()),
+                    Sequent::new(sequent.antecedents.clone(), or_prop.clone()),
                     Sequent::new(with_prop1, sequent.consequent.clone()),
                     Sequent::new(with_prop2, sequent.consequent.clone()),
                 ];
@@ -249,15 +239,14 @@ impl Rule {
 
 
 
-            Rule::Generalize(s) => {
-                let term: Box<Term> = parser::TermParser::new().parse(s).map_err(|_| Error::InvalidArguments(format!("Expected <Term> as <var>")))?;
+            Rule::Generalize(term) => {
                 // the term must be present in the formula for it to be generalized
-                if !sequent.consequent.exists(&term) {return Err(Error::CommandError(format!("{term} not present in the goal")))}
+                if !sequent.consequent.exists(term) {return Err(Error::CommandError(format!("{term} not present in the goal")))}
 
                 let var = sequent.consequent.new_variable();
 
                 let mut generalized = sequent.consequent.clone();
-                generalized.rewrite(&term, &Term::Variable(var.clone()));
+                generalized.rewrite(term, &Term::Variable(var.clone()));
 
                 let quantified = Formula::Forall(var, generalized);
 
@@ -269,15 +258,14 @@ impl Rule {
             }
 
 
-            Rule::FixAs(t) => {
+            Rule::FixAs(term) => {
                 match sequent.consequent.as_ref() {
 
                     Formula::Exists(exists, formula) => {
-                        let term: Box<Term> = parser::TermParser::new().parse(t).map_err(|_| Error::InvalidArguments(format!("Expected <Term>")))?;
-                        if sequent.consequent.exists(&term) {return Err(Error::InvalidArguments(format!("{term} already exists")))}
+                        if sequent.consequent.exists(term) {return Err(Error::InvalidArguments(format!("{term} already exists")))}
 
                         let mut fixed = formula.clone();
-                        fixed.rewrite(&Term::Variable(exists.clone()), &term);
+                        fixed.rewrite(&Term::Variable(exists.clone()), term);
 
                         let new_seq = vec![
                             Sequent::new(sequent.antecedents.clone(), fixed)
@@ -292,16 +280,14 @@ impl Rule {
             }
 
 
-            Rule::Consider(f) => {
-                let new_form: Box<Formula> = parser::FormulaParser::new().parse(f).map_err(|_| Error::InvalidArguments(format!("Expected exists <var>, <Formula>")))?;
-
+            Rule::Consider(new_form) => {
                 match new_form.as_ref() {
                     Formula::Exists(var, nf) => {
-                        if sequent.consequent.domain().contains(&var) {return Err(Error::CommandError(format!("{var} already exists in the goal")))}
-                        if sequent.domain().contains(&var) {return Err(Error::CommandError(format!("{var} already exists")))}
+                        if sequent.consequent.domain().contains(var) {return Err(Error::CommandError(format!("{var} already exists in the goal")))}
+                        if sequent.domain().contains(var) {return Err(Error::CommandError(format!("{var} already exists")))}
 
                         let mut with_nf = sequent.clone();
-                        with_nf.antecedents.push(nf.clone());
+                        with_nf.antecedents.push(*nf.clone());
 
                         let mut goal_nf = sequent.clone();
                         goal_nf.consequent = new_form.clone();
@@ -314,19 +300,17 @@ impl Rule {
                         Ok(new_seq)
                     }
 
-                    _ => Err(Error::InvalidArguments(format!("Expected exists <var>, <Formula>")))
+                    _ => Err(Error::InvalidArguments("Expected exists <var>, <Formula>".to_string()))
                 }
             }
 
 
 
             Rule::RenameAs(s) => {
-                let var: String = parser::VariableParser::new().parse(s).map_err(|_| Error::InvalidArguments(format!("Expected <var>")))?;
-
                 match sequent.consequent.as_ref() {
 
                     Formula::Exists(old, f) => {
-                        let mut nf = Box::new(Formula::Exists(var, f.clone()));
+                        let mut nf = Box::new(Formula::Exists(s.clone(), f.clone()));
                         nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
                         let mut new_s = sequent.clone();
                         new_s.consequent = nf;
@@ -335,7 +319,7 @@ impl Rule {
                     }
 
                     Formula::Forall(old, f) => {
-                        let mut nf = Box::new(Formula::Forall(var, f.clone()));
+                        let mut nf = Box::new(Formula::Forall(s.clone(), f.clone()));
                         nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
                         let mut new_s = sequent.clone();
                         new_s.consequent = nf;
@@ -357,7 +341,7 @@ impl Rule {
                 };
 
                 let mut with_prop = sequent.antecedents.clone();
-                with_prop.push(new_prop);
+                with_prop.push(*new_prop);
 
                 let new_seq = vec![
                     Sequent::new(with_prop, Box::new(Formula::Falsum))
@@ -372,10 +356,8 @@ impl Rule {
                 // ExFalso only works if current consequent is Bottom (i.e false)
                 match sequent.consequent.as_ref() {
                     Formula::Falsum => {
-                        let prop = parser::FormulaParser::new().parse(prop).map_err(|_| Error::InvalidArguments(format!("Expected <F>")))?;
-
                         let (true_prop, false_prop) = {
-                            match *prop {
+                            match *prop.clone() {
                                 Formula::Not(ref ff) => (ff.clone(), prop.clone()),
                                 o => (Box::new(o.clone()), Box::new(Formula::Not(Box::new(o))))
                             }

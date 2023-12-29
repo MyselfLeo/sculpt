@@ -1,12 +1,14 @@
 use std::fmt::{Display, Formatter};
-use crate::{parser, tools};
+use crate::{syntax::parser, tools};
+use crate::error::Error;
+use crate::syntax::lexer::Lexer;
 
 /// First-order logic term, that is either a variable or a function.
 /// Functions with no arguments are constants.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Variable(String),
-    Function(String, Vec<Box<Term>>)
+    Function(String, Vec<Term>)
 }
 
 
@@ -15,7 +17,7 @@ impl Display for Term {
         match self {
             Term::Variable(v) => write!(f, "{v}"),
             Term::Function(v, t) => {
-                if t.len() == 0 {
+                if t.is_empty() {
                     write!(f, "{v}")
                 }
                 else {
@@ -28,11 +30,8 @@ impl Display for Term {
 
 
 impl Term {
-    /// Creates a new Term by parsing the given string.
-    /// Each identifier (variable or function) MUST start with a lowercase letter.
-    /// Note that only identifier that matches the regex r"[a-z]'*" will be considered a variable.
-    pub fn from_str(str: &str) -> Result<Box<Term>, String> {
-        parser::TermParser::new().parse(str).map_err(|_| "Invalid term".to_string())
+    pub fn parse(lxr: &mut Lexer) -> Result<Term, Error> {
+        parser::TermParser::new().parse(lxr).map_err(|_| Error::InvalidArguments("Invalid term".to_string()))
     }
 
     /// Return whether the given term is used somewhere in this term or not.
@@ -56,14 +55,9 @@ impl Term {
             *self = new.clone();
         }
 
-        else {
-            match self {
-                Term::Function(_, terms) => {
-                    for t in terms {
-                        t.rewrite(old, new)
-                    }
-                }
-                _ => ()
+        else if let Term::Function(_, terms) = self {
+            for t in terms {
+                t.rewrite(old, new)
             }
         }
     }
@@ -77,10 +71,17 @@ impl Term {
             Term::Variable(x) => vec![x.clone()],
             Term::Function(_, terms) => {
                 terms.iter()
-                    .map(|t| t.domain())
-                    .flatten()
+                    .flat_map(|t| t.domain())
                     .collect()
             }
         }
+    }
+}
+
+
+
+impl Default for Term {
+    fn default() -> Self {
+        Term::Variable("x".to_string())
     }
 }
