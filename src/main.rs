@@ -10,6 +10,8 @@ mod syntax;
 use std::env;
 use error::Error;
 use repl::Repl;
+
+#[cfg(feature = "exec")]
 use exec::Executor;
 
 
@@ -21,6 +23,7 @@ fn start_repl() -> Result<(), Error> {
     Ok(())
 }
 
+#[cfg(feature = "exec")]
 fn exec_file(filename: String) {
     let mut exec = Executor::from_file(filename).unwrap();
 
@@ -49,7 +52,7 @@ fn exec_file(filename: String) {
     Some(str)
 }*/
 
-
+#[cfg(feature = "exec")]
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -67,5 +70,13 @@ fn main() {
         else {
             exec_file(args[2].clone())
         }
+    }
+}
+
+#[cfg(not(feature = "exec"))]
+fn main() {
+    match start_repl() {
+        Ok(_) => (),
+        Err(e) => eprintln!("ERROR: {e}"),
     }
 }
