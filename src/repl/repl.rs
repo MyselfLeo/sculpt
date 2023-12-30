@@ -106,15 +106,18 @@ impl Repl {
 
 
 
-
-    fn get_command(&mut self) -> Result<Command, Error> {
+    // Multiple commands can be given in 1 line using dots.
+    fn get_command(&mut self) -> Result<Vec<Command>, Error> {
         let mut txt = String::new();
         match io::stdin().read_line(&mut txt) {
             Ok(_) => {}
             Err(_) => return Err(Error::UnableToRead)
         };
 
-        Command::from(&txt)
+        txt.trim()
+           .split('.')
+           .map(Command::from)
+           .collect()
     }
 
 
@@ -129,10 +132,12 @@ impl Repl {
             self.update()?;
 
             match self.get_command() {
-                Ok(c) => {
-                    match self.execute(c) {
-                        Ok(_) => self.last_error = None,
-                        Err(e) => self.last_error = Some(e),
+                Ok(cmds) => {
+                    for c in cmds {
+                        match self.execute(c) {
+                            Ok(_) => self.last_error = None,
+                            Err(e) => self.last_error = Some(e),
+                        }
                     }
                 },
                 Err(e) => self.last_error = Some(e)
