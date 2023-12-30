@@ -42,12 +42,12 @@ pub enum ContextCommand {
 
     #[cmd(name="Thm", usage="<thm_name> :: <F>", desc="Create a new theorem and start the proof mode")]
     Theorem(String, Box<Formula>),
-    #[cmd(name="admit", desc="Consider the current goal proven, exit proof mode")]
-    Admit,
-    #[cmd(name="use", usage="use <thm_name>", desc="Adds a theorem to the proof context")]
+    #[cmd(name="Use", usage="<thm_name>", desc="Adds a theorem to the proof context")]
     Use(String),
-    #[cmd(name="qed", desc="Finish the proof & exit proof mode (only when no more subgoals)")]
-    Qed
+    #[cmd(name="Admit", desc="Consider the current goal proven, exit proof mode")]
+    Admit,
+    #[cmd(name="Qed", desc="Finish the proof & exit proof mode (only when no more subgoals)")]
+    Qed,
 }
 
 impl Display for ContextCommand {
@@ -326,7 +326,7 @@ impl EngineCommand {
             "keep_right" => RuleCommand::KeepRight,
             "from_or" => RuleCommand::FromOr(parse_formula(lxr)?),
             "gen" => RuleCommand::Generalize(parse_term(lxr)?),
-            "fix_as" => RuleCommand::Generalize(parse_term(lxr)?),
+            "fix_as" => RuleCommand::FixAs(parse_term(lxr)?),
             "consider" => RuleCommand::Consider(parse_formula(lxr)?),
             "rename_as" => {
                 match lxr.next() {
