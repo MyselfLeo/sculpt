@@ -3,27 +3,18 @@ use crate::{syntax::parser, tools};
 use crate::error::Error;
 use crate::syntax::lexer::Lexer;
 
-/// First-order logic term, that is either a variable or a function.
-/// Functions with no arguments are constants.
+/// First-order logic term
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term {
-    Variable(String),
-    Function(String, Vec<Term>)
-}
+pub struct Term(pub String, pub Vec<Term>);
 
 
 impl Display for Term {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Term::Variable(v) => write!(f, "{v}"),
-            Term::Function(v, t) => {
-                if t.is_empty() {
-                    write!(f, "{v}")
-                }
-                else {
-                    write!(f, "{v}({})", tools::list_str(t, ", "))
-                }
-            }
+        if self.1.is_empty() {
+            write!(f, "{}", self.0)
+        }
+        else {
+            write!(f, "{}({})", self.0, tools::list_str(&self.1, ", "))
         }
     }
 }
@@ -38,12 +29,7 @@ impl Term {
     pub fn exists(&self, term: &Term) -> bool {
         if self == term {true}
         else {
-            match self {
-                Term::Variable(_) => false,
-                Term::Function(_, terms) => {
-                    terms.iter().any(|t| t.exists(term))
-                }
-            }
+            self.1.iter().any(|t| t.exists(term))
         }
     }
 
@@ -51,12 +37,11 @@ impl Term {
     /// Replace in this term a term by another.
     pub fn rewrite(&mut self, old: &Term, new: &Term) {
         if self == old {
-            println!("h");
             *self = new.clone();
         }
 
-        else if let Term::Function(_, terms) = self {
-            for t in terms {
+        else {
+            for t in &mut self.1 {
                 t.rewrite(old, new)
             }
         }
@@ -67,14 +52,9 @@ impl Term {
     /// Return a list of each variable in the domain
     /// of this Term.
     pub fn domain(&self) -> Vec<String> {
-        match self {
-            Term::Variable(x) => vec![x.clone()],
-            Term::Function(_, terms) => {
-                terms.iter()
-                    .flat_map(|t| t.domain())
-                    .collect()
-            }
-        }
+        let mut res = vec![self.0.clone()];
+        res.extend(self.1.iter().flat_map(|t| t.domain()));
+        res
     }
 }
 
@@ -82,6 +62,6 @@ impl Term {
 
 impl Default for Term {
     fn default() -> Self {
-        Term::Variable("x".to_string())
+        Self("x".to_string(), vec![])
     }
 }

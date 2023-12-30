@@ -16,8 +16,8 @@ Terms = CommaSep<Term>;
 
 
 pub Term: Term = {
-    <n:Ident> => Term::Function(n.to_string(), vec![]),
-    <n:Ident> OpenParen <v:Terms> CloseParen => Term::Function(n.to_string(), v)
+    <n:Ident> => Term(n.to_string(), vec![]),
+    <n:Ident> OpenParen <v:Terms> CloseParen => Term(n.to_string(), v)
 }
 
 

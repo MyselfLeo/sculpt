@@ -194,7 +194,7 @@ impl Repl {
                         let desc = cmd.desc().map_or("".to_string(), desc_fmt);
                         name_usg.map(|n| (n, desc))
                     })
-                    .map(|(name, desc)| format!("{:20} {}", name, desc))
+                    .map(|(name, desc)| format!("{:25} {}", name, desc))
                     .collect::<Vec<String>>();
 
                 let cols = tools::in_columns(&strings, terminal::size()?.0 as usize, ColumnJustification::Balanced);

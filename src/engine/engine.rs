@@ -151,7 +151,7 @@ impl Engine {
     /// Check that the relation & term names used in the formula matches the current context.
     /// If a relation/term/variable uses an identifier already defined and not of the same type, returns an Err.
     /// If a relation/term uses an identifier that is not yet defined & forgiving is set to true, define it silently.
-    pub fn check_formula(&mut self, f: &Formula, forgiving: bool) -> Result<Vec<EngineEffect>, Error> {
+    pub fn check_formula(&mut self, f: &Formula, bound_vars: Vec<String>, forgiving: bool) -> Result<Vec<EngineEffect>, Error> {
         let mut effects = vec![];
         match f {
             Formula::Relation(n, terms) => {
@@ -166,7 +166,7 @@ impl Engine {
                     }
 
                     for t in terms {
-                        effects.append(&mut self.check_term(t, forgiving)?)
+                        effects.append(&mut self.check_term(t, bound_vars.clone(), forgiving)?)
                     };
 
                     Ok(effects)
@@ -175,24 +175,32 @@ impl Engine {
             }
 
             Formula::Forall(n, f) | Formula::Exists(n, f) => {
-                self.context.expect_not_defined(n)?;
-                self.check_formula(f, forgiving)
+                if bound_vars.contains(n) {
+                    Err(Error::AlreadyExists(format!("Variable '{n}' is already defined")))
+                }
+                else {
+                    self.context.expect_not_defined(n)?;
+                    let mut new_bv = bound_vars.clone();
+                    new_bv.push(n.clone());
+
+                    self.check_formula(f, new_bv, forgiving)
+                }
             }
 
             Formula::And(l1, l2) | Formula::Or(l1, l2) => {
-                effects.append(&mut self.check_formula(l1.as_ref(), forgiving)?);
-                effects.append(&mut self.check_formula(l2.as_ref(), forgiving)?);
+                effects.append(&mut self.check_formula(l1.as_ref(), bound_vars.clone(), forgiving)?);
+                effects.append(&mut self.check_formula(l2.as_ref(), bound_vars, forgiving)?);
                 Ok(effects)
             }
 
             Formula::Implies(l1, l2) => {
-                effects.append(&mut self.check_formula(l1.as_ref(), forgiving)?);
-                effects.append(&mut self.check_formula(l2.as_ref(), forgiving)?);
+                effects.append(&mut self.check_formula(l1.as_ref(), bound_vars.clone(), forgiving)?);
+                effects.append(&mut self.check_formula(l2.as_ref(), bound_vars, forgiving)?);
                 Ok(effects)
             }
 
             Formula::Not(l) => {
-                effects.append(&mut self.check_formula(l.as_ref(), forgiving)?);
+                effects.append(&mut self.check_formula(l.as_ref(), bound_vars, forgiving)?);
                 Ok(effects)
             }
 
@@ -202,36 +210,23 @@ impl Engine {
 
 
     /// Same as [check_formula] but for terms
-    fn check_term(&mut self, t: &Term, forgiving: bool) -> Result<Vec<EngineEffect>, Error> {
+    fn check_term(&mut self, t: &Term, bound_vars: Vec<String>, forgiving: bool) -> Result<Vec<EngineEffect>, Error> {
         let mut effects = vec![];
-        match t {
-            Term::Variable(v) => {
-                if self.context.relations.contains_key(v) {
-                    Err(Error::InvalidTerm(t.clone(), format!("'{v}' used as a term but defined as a relation")))
-                }
-                else {
-                    Ok(vec![])
-                }
-            }
-            Term::Function(v, terms) => {
-                if self.context.relations.contains_key(v) {
-                    Err(Error::InvalidTerm(t.clone(), format!("'{v}' used as a term but defined as a relation")))
-                }
-                else {
-                    // Forgiving part
-                    if !self.context.terms.contains_key(v) && forgiving {
-                        self.context.add_term(v)?;
-                        effects.push(EngineEffect::DefinedTerm(v.to_string()));
-                    }
 
-                    for t in terms {
-                        effects.append(&mut self.check_term(t, forgiving)?)
-                    };
-
-                    Ok(effects)
-                }
-            }
+        if self.context.relations.contains_key(&t.0) {
+            return Err(Error::InvalidTerm(t.clone(), format!("'{}' used as a term but defined as a relation", t.0)))
         }
+
+        if !self.context.terms.contains_key(&t.0) && forgiving && !bound_vars.contains(&t.0) {
+            self.context.add_term(&t.0)?;
+            effects.push(EngineEffect::DefinedTerm(t.0.to_string()));
+        }
+
+        for term in &t.1 {
+            effects.append(&mut self.check_term(term, bound_vars.clone(), forgiving)?)
+        };
+
+        Ok(effects)
     }
 
 
@@ -275,7 +270,7 @@ impl Engine {
                 self.context.expect_not_defined(name)?;
 
                 // Check that the formula is valid
-                let mut check_eff = self.check_formula(goal, true)?;
+                let mut check_eff = self.check_formula(goal, vec![], true)?;
                 effects.append(&mut check_eff);
 
                 let proof = Proof::start(goal.clone());
@@ -309,7 +304,7 @@ impl Engine {
                     | Rule::FromOr(f)
                     | Rule::Consider(f)
                     | Rule::ExFalso(f) => {
-                        let mut e = self.check_formula(&f, true)?;
+                        let mut e = self.check_formula(&f, vec![], true)?;
                         effects.append(&mut e)
                     },
                     _ => ()

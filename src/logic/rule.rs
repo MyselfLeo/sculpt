@@ -246,7 +246,7 @@ impl Rule {
                 let var = sequent.consequent.new_variable();
 
                 let mut generalized = sequent.consequent.clone();
-                generalized.rewrite(term, &Term::Variable(var.clone()));
+                generalized.rewrite(term, &Term(var.clone(), vec![]));
 
                 let quantified = Formula::Forall(var, generalized);
 
@@ -265,7 +265,7 @@ impl Rule {
                         if sequent.consequent.exists(term) {return Err(Error::InvalidArguments(format!("{term} already exists")))}
 
                         let mut fixed = formula.clone();
-                        fixed.rewrite(&Term::Variable(exists.clone()), term);
+                        fixed.rewrite(&Term(exists.clone(), vec![]), term);
 
                         let new_seq = vec![
                             Sequent::new(sequent.antecedents.clone(), fixed)
@@ -311,7 +311,7 @@ impl Rule {
 
                     Formula::Exists(old, f) => {
                         let mut nf = Box::new(Formula::Exists(s.clone(), f.clone()));
-                        nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
+                        nf.rewrite(&Term(old.clone(), vec![]), &Term(s.clone(), vec![]));
                         let mut new_s = sequent.clone();
                         new_s.consequent = nf;
 
@@ -320,7 +320,7 @@ impl Rule {
 
                     Formula::Forall(old, f) => {
                         let mut nf = Box::new(Formula::Forall(s.clone(), f.clone()));
-                        nf.rewrite(&Term::Variable(old.clone()), &Term::Variable(s.clone()));
+                        nf.rewrite(&Term(old.clone(), vec![]), &Term(s.clone(), vec![]));
                         let mut new_s = sequent.clone();
                         new_s.consequent = nf;
 
@@ -392,36 +392,22 @@ impl RuleType {
             }
             RuleType::Intro | RuleType::Intros => {
                 if let &Formula::Implies(_, _) = &sequent.consequent.as_ref() { true }
-                else if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
+                else { matches!(sequent.consequent.as_ref(), &Formula::Forall(_, _)) }
             }
             RuleType::Trans => true,
-            RuleType::SplitAnd => {
-                if let &Formula::And(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
+            RuleType::SplitAnd => matches!(sequent.consequent.as_ref(), &Formula::And(_, _)),
             RuleType::And => true,
-            RuleType::Keep => {
-                if let &Formula::Or(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
+            RuleType::Keep => matches!(sequent.consequent.as_ref(), &Formula::Or(_, _)),
             RuleType::FromOr => true,
             RuleType::Generalize => true,
-            RuleType::FixAs => {
-                if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
+            RuleType::FixAs => matches!(sequent.consequent.as_ref(), &Formula::Exists(_, _)),
             RuleType::Consider => true,
             RuleType::RenameAs => {
                 if let &Formula::Forall(_, _) = &sequent.consequent.as_ref() { true }
-                else if let &Formula::Exists(_, _) = &sequent.consequent.as_ref() { true }
-                else { false }
+                else { matches!(sequent.consequent.as_ref(), &Formula::Exists(_, _)) }
             }
             RuleType::FromBottom => true,
-            RuleType::ExFalso=> {
-                if let &Formula::Falsum = &sequent.consequent.as_ref() { true }
-                else { false }
-            }
+            RuleType::ExFalso=> matches!(sequent.consequent.as_ref(), &Formula::Falsum)
         }
     }
 }
