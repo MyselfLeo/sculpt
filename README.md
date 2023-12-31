@@ -29,9 +29,9 @@ It is mainly used as a REPL. An experimental, unfinished file-based interpreter 
 2. Let's define some assumptions. We use the command `Thm` to enter proof mode, then leave without proving anything using `Admit`.
 This simple example will only use propositionnal logic.
    ```
-   >    Thm a_and_j ::  A /\ J => Z.  Admit.
-   >    Thm a_if_j  ::  J => A.       Admit.
-   >    Thm j_or_z  ::  J \/ Z.       Admit.
+   > Thm a_and_j ::  A /\ J => Z.  Admit.
+   > Thm a_if_j  ::  J => A.       Admit.
+   > Thm j_or_z  ::  J \/ Z.       Admit.
    ```
 
 
