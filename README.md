@@ -14,6 +14,7 @@ Use cargo to install directly from this repository:
 ```
 $ cargo install --git https://github.com/MyselfLeo/sculpt -- features exec      # with the file interpreter
 $ cargo install --git https://github.com/MyselfLeo/sculpt                       # without
+```
 
 ### Via local installation
 
