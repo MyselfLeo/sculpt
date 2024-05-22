@@ -8,6 +8,15 @@ It is mainly used as a REPL. An experimental, unfinished file-based interpreter 
 
 ## Installation
 
+### Via Github
+
+Use cargo to install directly from this repository:
+```
+$ cargo install --git https://github.com/MyselfLeo/sculpt -- features exec      # with the file interpreter
+$ cargo install --git https://github.com/MyselfLeo/sculpt                       # without
+
+### Via local installation
+
 1. Clone this repository on your system.
 
 2. Inside the repository, use cargo to install the crate on your system:
