@@ -32,7 +32,7 @@ pub enum ReplState {
     Help(Box<ReplState>),
     CommandHelp(Command, Box<ReplState>),
     CommandStack(Box<ReplState>),
-    Quitting
+    Quitting,
 }
 
 impl ReplState {
@@ -57,13 +57,9 @@ impl ReplState {
 }*/
 
 
-
-
-
-
 pub struct Repl {
     pub state: ReplState,
-    last_error: Option<Error>
+    last_error: Option<Error>,
 }
 
 impl Repl {
@@ -79,9 +75,9 @@ impl Repl {
             }
             ReplState::Working(inter, _) => {
                 res.extend(inter.get_valid_commands()
-                   .iter()
-                   .map(|cmd| Command::EngineCommand(cmd.clone()))
-                   .collect::<Vec<_>>()
+                    .iter()
+                    .map(|cmd| Command::EngineCommand(cmd.clone()))
+                    .collect::<Vec<_>>()
                 );
                 res.push(Command::ReplCommand(ReplCommand::Undo));
                 res.push(Command::ReplCommand(ReplCommand::Exit));
@@ -105,7 +101,6 @@ impl Repl {
     }
 
 
-
     // Multiple commands can be given in 1 line using dots.
     fn get_command(&mut self) -> Result<Vec<Command>, Error> {
         let mut txt = String::new();
@@ -115,13 +110,10 @@ impl Repl {
         };
 
         txt.trim()
-           .split('.')
-           .map(Command::from)
-           .collect()
+            .split('.')
+            .map(Command::from)
+            .collect()
     }
-
-
-
 
 
     pub fn start(&mut self) -> io::Result<()> {
@@ -139,7 +131,7 @@ impl Repl {
                             Err(e) => self.last_error = Some(e),
                         }
                     }
-                },
+                }
                 Err(e) => self.last_error = Some(e)
             }
         }
@@ -148,14 +140,10 @@ impl Repl {
     }
 
 
-
-
-
     fn update(&mut self) -> io::Result<()> {
         execute!(io::stdout(), MoveTo(0, 0), terminal::Clear(terminal::ClearType::FromCursorDown))?;
 
         match &mut self.state {
-
             ReplState::Idle => {
                 titleline!();
                 println!("type 'context <name>' to create a new context");
@@ -201,8 +189,6 @@ impl Repl {
                 println!("{cols}");
             }
 
-
-
             ReplState::CommandHelp(command, _) => {
                 titleline!();
                 println!("(F, G, H: Formula, T: Term, v: variable)");
@@ -232,8 +218,8 @@ impl Repl {
 
                     let length_bot = schema.1.graphemes(true).count();
 
-                    let left_top_padding = if length_top < length_bot {(length_bot - length_top) / 2} else {0};
-                    let left_bot_padding = if length_top > length_bot {(length_top - length_bot) / 2} else {0};
+                    let left_top_padding = if length_top < length_bot { (length_bot - length_top) / 2 } else { 0 };
+                    let left_bot_padding = if length_top > length_bot { (length_top - length_bot) / 2 } else { 0 };
 
                     let antecedents_str = tools::list_str(&schema.0, " ".repeat(5).as_str());
 
@@ -243,13 +229,11 @@ impl Repl {
                 }
             }
 
-
             ReplState::Working(ref mut ctx, _) => {
                 titleline!(ctx.name);
                 match &ctx.current_proof {
                     None => {
-                        println!("type 'proof P' to start to prove P");
-                        println!("     'admit F' to add an unproven assumption");
+                        println!("type 'Thm <name> :: P' to start to prove P");
                         println!("     'help' for command information");
                         println!("     'quit' to leave");
 
@@ -265,9 +249,6 @@ impl Repl {
                     Some((_, p)) => p.print(),
                 }
             }
-
-
-
 
             ReplState::CommandStack(state) => {
                 let p = match state.as_ref() {
@@ -295,7 +276,6 @@ impl Repl {
                 println!("{cols}");
             }
 
-
             ReplState::Quitting => {}
         }
 
@@ -309,8 +289,7 @@ impl Repl {
         if let Some(e) = &self.last_error {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Error: {e}");
-        }
-        else if !valid_command_str.is_empty() {
+        } else if !valid_command_str.is_empty() {
             execute!(io::stdout(), MoveTo(0, final_row-2))?;
             print!("Possible commands: {}", tools::list_str(&valid_command_str, ", "));
         }
@@ -323,14 +302,7 @@ impl Repl {
     }
 
 
-
-
-
-
-
-
     pub fn execute(&mut self, cmd: Command) -> Result<(), Error> {
-
         let previous = |s: &ReplState| {
             if let ReplState::Help(prev) = s {
                 prev.clone()
@@ -363,7 +335,7 @@ impl Repl {
                     // Revert operation
                     (ReplState::Working(_, prev), ReplCommand::Undo) => {
                         self.state = *prev.clone();
-                    },
+                    }
 
                     // Go to command stack display
                     (ReplState::Working(_, _), ReplCommand::List) => {
@@ -376,14 +348,14 @@ impl Repl {
                         // previous instead of itself to prevent huge help-screen history
 
                         self.state = ReplState::Help(previous(s));
-                    },
+                    }
                     (s, ReplCommand::HelpCommand(cmd)) => {
                         let command = Command::from(&cmd)?;
 
                         // if the previous state is also Help or CommandHelp, we use this state's
                         // previous instead of itself to prevent huge help-screen history
                         self.state = ReplState::CommandHelp(command, previous(s));
-                    },
+                    }
 
                     // Exit help menu
                     (ReplState::Help(s), ReplCommand::Exit | ReplCommand::Return) => {
@@ -391,7 +363,7 @@ impl Repl {
                     }
                     (ReplState::CommandHelp(_, s), ReplCommand::Exit | ReplCommand::Return) => {
                         self.state = *s.clone();
-                    },
+                    }
 
                     // Exit stack
                     (ReplState::CommandStack(s), ReplCommand::Exit | ReplCommand::Return) => {
@@ -402,25 +374,21 @@ impl Repl {
                     (_, ReplCommand::Return) => (),
 
                     (_, c) => {
-                        return Err(Error::InvalidCommand(c.name().unwrap_or("unknown".to_string())))
+                        return Err(Error::InvalidCommand(c.name().unwrap_or("unknown".to_string())));
                     }
                 }
             }
-
 
 
             // Other commands (that could be found in a file for example)
             (ReplState::Working(ref mut inter, ref mut prev), Command::EngineCommand(cmd)) => {
                 inter.execute(cmd)?;
                 *prev = Box::new(curr_clone);
-            },
-
-
-            (_, cmd) => {
-                return Err(Error::InvalidCommand(cmd.name().unwrap_or("unknown".to_string())))
             }
 
-
+            (_, cmd) => {
+                return Err(Error::InvalidCommand(cmd.name().unwrap_or("unknown".to_string())));
+            }
         };
 
         Ok(())
