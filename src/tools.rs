@@ -19,7 +19,7 @@ pub fn list_str<E: Display>(vec: &Vec<E>, sep: &str) -> String {
 
 pub enum ColumnJustification {
     Balanced,
-    Fill(usize)
+    Fill(usize),
 }
 
 
@@ -28,13 +28,13 @@ pub enum ColumnJustification {
 pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustification) -> String {
     const SEP_SIZE: usize = 10;
 
-    if vec.is_empty() {return String::new()}
+    if vec.is_empty() { return String::new(); }
 
     let mut strings: Vec<String> = vec.iter().map(|e| e.to_string()).collect();
     let mut column_length = strings.iter().map(|e| e.len()).max().expect("Iterator was empty");
 
     let shorten = |s: &mut String, n: usize| {
-        if s.len() <= n {return}
+        if s.len() <= n { return; }
         s.truncate(n - 2);
         s.push_str("..");
     };
@@ -42,11 +42,10 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustificat
     let right_nb = match just {
         ColumnJustification::Balanced => {
             vec.len().div_ceil(2)
-        },
+        }
         ColumnJustification::Fill(x) => {
-            if x > vec.len() {0}
-            else {vec.len() - x}
-        },
+            if x > vec.len() { 0 } else { vec.len() - x }
+        }
     };
 
     // Shorten the strings if required by the requested width
@@ -60,11 +59,11 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustificat
         ColumnJustification::Balanced => {
             let nb = vec.len().div_ceil(2);
             (&strings[0..nb], &strings[nb..])
-        },
+        }
         ColumnJustification::Fill(mut height) => {
             height = min(height, vec.len());
             (&strings[0..height], &strings[height..])
-        },
+        }
     };
 
 
@@ -87,33 +86,31 @@ pub fn in_columns<E: Display>(vec: &Vec<E>, width: usize, just: ColumnJustificat
 }
 
 
-
-
 /// Similar to [std::iter::Zip], but will return `None` ONLY
 /// when both iterators return `None`.
 pub struct GreedyZip<'a, A: IntoIterator, B: IntoIterator> {
-    a: Box<dyn Iterator<Item = A::Item> + 'a>,
-    b: Box<dyn Iterator<Item = B::Item> + 'a>
+    a: Box<dyn Iterator<Item=A::Item> + 'a>,
+    b: Box<dyn Iterator<Item=B::Item> + 'a>,
 }
 
 impl<'a, A, B> GreedyZip<'a, A, B>
-where
-    A: IntoIterator + 'a,
-    B: IntoIterator + 'a
+    where
+        A: IntoIterator + 'a,
+        B: IntoIterator + 'a
 {
     pub fn new(a: A, b: B) -> GreedyZip<'a, A, B> {
         GreedyZip {
             a: Box::new(a.into_iter()),
-            b: Box::new(b.into_iter())
+            b: Box::new(b.into_iter()),
         }
     }
 }
 
 
 impl<'a, A, B> Iterator for GreedyZip<'a, A, B>
-where
-    A: IntoIterator + 'a,
-    B: IntoIterator + 'a
+    where
+        A: IntoIterator + 'a,
+        B: IntoIterator + 'a
 {
     type Item = (Option<A::Item>, Option<B::Item>);
 
