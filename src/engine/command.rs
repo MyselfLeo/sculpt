@@ -6,13 +6,7 @@ use crate::logic::{Formula, Term};
 use crate::syntax::lexer::{Lexer, Token};
 
 
-
-
-
-const DEFAULT_RULES: [&str; 19] = [
-    "admit",
-    "proof",
-    "qed",
+const DEFAULT_RULES: [&str; 16] = [
     "axiom",
     "intro",
     "intros",
@@ -39,14 +33,17 @@ fn is_rule(str: &str) -> bool {
 /// Control command for the engine. Those rules are not directly linked to natural deduction.
 #[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum ContextCommand {
-
-    #[cmd(name="Thm", usage="<thm_name> :: <F>", desc="Create a new theorem and start the proof mode")]
+    #[cmd(
+        name = "Thm",
+        usage = "<thm_name> :: <F>",
+        desc = "Create a new theorem and start the proof mode"
+    )]
     Theorem(String, Box<Formula>),
-    #[cmd(name="Use", usage="<thm_name>", desc="Adds a theorem to the proof context")]
+    #[cmd(name = "Use", usage = "<thm_name>", desc = "Adds a theorem to the proof context")]
     Use(String),
-    #[cmd(name="Admit", desc="Consider the current goal proven, exit proof mode")]
+    #[cmd(name = "Admit", desc = "Consider the current goal proven, exit proof mode")]
     Admit,
-    #[cmd(name="Qed", desc="Finish the proof & exit proof mode (only when no more subgoals)")]
+    #[cmd(name = "Qed", desc = "Finish the proof & exit proof mode (only when no more subgoals)")]
     Qed,
 }
 
@@ -65,42 +62,41 @@ impl Display for ContextCommand {
 }
 
 
-
 /// Command only available during a proof. Applies natural deduction rules.
 #[derive(Clone, Debug, EnumIter, EnumDoc, EnumType, PartialEq)]
 pub enum RuleCommand {
-    #[cmd(name="axiom")]
+    #[cmd(name = "axiom")]
     Axiom,
-    #[cmd(name="intro")]
+    #[cmd(name = "intro")]
     Intro,
-    #[cmd(name="intros", desc="Apply multiple 'intro' rules, until it's not longer possible")]
+    #[cmd(name = "intros", desc = "Apply multiple 'intro' rules, until it's not longer possible")]
     Intros,
-    #[cmd(name="trans", usage="<F>")]
+    #[cmd(name = "trans", usage = "<F>")]
     Trans(Box<Formula>),
-    #[cmd(name="split")]
+    #[cmd(name = "split")]
     Split,
-    #[cmd(name="and_left", usage="<F>")]
+    #[cmd(name = "and_left", usage = "<F>")]
     AndLeft(Box<Formula>),
-    #[cmd(name="and_right", usage="<F>")]
+    #[cmd(name = "and_right", usage = "<F>")]
     AndRight(Box<Formula>),
-    #[cmd(name="keep_left")]
+    #[cmd(name = "keep_left")]
     KeepLeft,
-    #[cmd(name="keep_right")]
+    #[cmd(name = "keep_right")]
     KeepRight,
-    #[cmd(name="from_or", usage="<F> \\/ <G>")]
+    #[cmd(name = "from_or", usage = "<F> \\/ <G>")]
     FromOr(Box<Formula>),
-    #[cmd(name="gen", usage="<T>")]
+    #[cmd(name = "gen", usage = "<T>")]
     Generalize(Box<Term>),
-    #[cmd(name="fix_as", usage="<T>")]
+    #[cmd(name = "fix_as", usage = "<T>")]
     FixAs(Box<Term>),
-    #[cmd(name="consider", usage="exists <v>, <F>")]
+    #[cmd(name = "consider", usage = "exists <v>, <F>")]
     Consider(Box<Formula>),
-    #[cmd(name="rename_as", usage="<v>")]
+    #[cmd(name = "rename_as", usage = "<v>")]
     RenameAs(String),
-    #[cmd(name="from_bottom", usage="<F>")]
+    #[cmd(name = "from_bottom", usage = "<F>")]
     FromBottom,
-    #[cmd(name="exfalso", usage="<F>")]
-    ExFalso(Box<Formula>)
+    #[cmd(name = "exfalso", usage = "<F>")]
+    ExFalso(Box<Formula>),
 }
 
 
@@ -198,11 +194,10 @@ impl RuleCommandType {
 }
 
 
-
 #[derive(Clone, PartialEq, Debug)]
 pub enum EngineCommand {
     ContextCommand(ContextCommand),
-    RuleCommand(RuleCommand)
+    RuleCommand(RuleCommand),
 }
 
 impl Display for EngineCommand {
@@ -216,13 +211,11 @@ impl Display for EngineCommand {
 
 
 impl EngineCommand {
-
     pub fn parse(command: &mut Lexer) -> Result<Option<EngineCommand>, Error> {
-
         let next = match command.next() {
             Some(c) => {
                 c.expect("LexicalError")
-            },
+            }
             None => return Ok(None) // empty command
         };
 
@@ -235,8 +228,7 @@ impl EngineCommand {
             (_, Token::Ident(s), _) => {
                 if is_rule(&s) {
                     EngineCommand::parse_rule(command, s)
-                }
-                else {
+                } else {
                     Err(Error::UnknownCommand(s))
                 }
             }
@@ -247,8 +239,7 @@ impl EngineCommand {
         // syntactical error
         if command.next().is_some() {
             Err(Error::TooMuchArguments("Too much arguments where supplied".to_string()))
-        }
-        else {
+        } else {
             Ok(Some(res))
         }
     }
@@ -303,13 +294,13 @@ impl EngineCommand {
     fn parse_rule(lxr: &mut Lexer, rule_name: String) -> Result<EngineCommand, Error> {
         let parse_formula = |lxr: &mut Lexer| -> Result<Box<Formula>, Error> {
             if lxr.is_finished() {
-                return Err(Error::ArgumentsRequired("Expected a formula".to_string()))
+                return Err(Error::ArgumentsRequired("Expected a formula".to_string()));
             }
             Formula::parse(lxr).map(Box::new)
         };
         let parse_term = |lxr: &mut Lexer| -> Result<Box<Term>, Error> {
             if lxr.is_finished() {
-                return Err(Error::ArgumentsRequired("Expected a term".to_string()))
+                return Err(Error::ArgumentsRequired("Expected a term".to_string()));
             }
             Term::parse(lxr).map(Box::new)
         };
@@ -336,7 +327,7 @@ impl EngineCommand {
                     },
                     None => return Err(Error::ArgumentsRequired("Expected a variable name".to_string()))
                 }
-            },
+            }
             "from_bottom" => RuleCommand::FromBottom,
             "exfalso" => RuleCommand::ExFalso(parse_formula(lxr)?),
             _ => unreachable!(), // lexer should not generate a Token::RuleName if rule_name is not in this list
@@ -404,7 +395,6 @@ impl EngineCommand {
 
         //Ok(command)
     }*/
-
 
 
     pub fn name(&self) -> Option<String> {
